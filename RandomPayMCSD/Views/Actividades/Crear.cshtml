@@ -1,0 +1,49 @@
+﻿@{
+    ViewData["Title"] = "Nueva actividad";
+}
+
+<style>
+    .form-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
+        padding: 2rem;
+        max-width: 550px;
+        margin: 0 auto;
+    }
+
+    .btn-primary-custom {
+        background: #2563eb;
+        color: white;
+        border-radius: 40px;
+        padding: 0.8rem 2rem;
+        font-weight: 600;
+        border: none;
+        width: 100%;
+    }
+
+        .btn-primary-custom:hover {
+            background: #1d4ed8;
+        }
+</style>
+
+<div class="container mt-5">
+    <div class="form-card">
+        <h2 class="fw-bold mb-4" style="color: #2563eb;">Crear nueva actividad</h2>
+        <form method="post">
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Nombre de la actividad</label>
+                <input type="text" name="nombre" class="form-control form-control-lg rounded-4" placeholder="Ej: Viaje a Madrid" required />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Moneda principal</label>
+                <select name="moneda" class="form-select form-select-lg rounded-4">
+                    <option value="EUR">EUR (€)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="GBP">GBP (£)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary-custom">Crear actividad</button>
+        </form>
+    </div>
+</div>

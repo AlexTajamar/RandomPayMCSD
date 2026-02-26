@@ -1,0 +1,61 @@
+﻿@{
+    ViewData["Title"] = "Iniciar sesión";
+    string mensaje = ViewData["MENSAJE"] as string;
+}
+
+<style>
+    .login-card {
+        background: white;
+        border-radius: 32px;
+        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
+        padding: 2.5rem;
+        max-width: 450px;
+        margin: 2rem auto;
+    }
+
+    .btn-login {
+        background: #2563eb;
+        color: white;
+        border-radius: 40px;
+        padding: 0.8rem;
+        font-weight: 600;
+        border: none;
+        width: 100%;
+        transition: all 0.2s;
+    }
+
+        .btn-login:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+</style>
+
+<div class="container">
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <i class="fa-solid fa-money-bill-transfer fa-3x" style="color: #2563eb;"></i>
+            <h2 class="fw-bold mt-3" style="color: #2563eb;">RandomPay</h2>
+            <p class="text-muted">Comparte gastos fácilmente</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(mensaje))
+        {
+            <div class="alert alert-danger rounded-4">@mensaje</div>
+        }
+
+        <form method="post">
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Email</label>
+                <input type="email" name="email" class="form-control form-control-lg rounded-4" required />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Contraseña</label>
+                <input type="password" name="password" class="form-control form-control-lg rounded-4" required />
+            </div>
+            <button type="submit" class="btn-login">Iniciar sesión</button>
+        </form>
+        <p class="text-center mt-4 text-muted small">
+            ¿No tienes cuenta? <a href="#" style="color: #2563eb;">Regístrate</a> (próximamente)
+        </p>
+    </div>
+</div>

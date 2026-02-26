@@ -1,0 +1,154 @@
+﻿@using RandomPayMCSD.Models
+@using RandomPayMCSD.Extensions
+@{
+    Usuario currentUser = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - RandomPay</title>
+
+    <!-- Fuente moderna Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/RandomPayMCSD.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
+
+        /* Navbar mejorado */
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.6rem;
+            letter-spacing: -0.5px;
+        }
+
+        .navbar-dark.bg-primary-custom {
+            background: linear-gradient(145deg, #2563eb, #1d4ed8) !important;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+        }
+
+        .navbar .nav-link {
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            border-radius: 30px;
+            transition: background 0.2s;
+        }
+
+            .navbar .nav-link:hover {
+                background: rgba(255,255,255,0.15);
+            }
+
+        .btn-outline-light {
+            border-width: 2px;
+            border-radius: 30px;
+            font-weight: 600;
+            padding: 0.4rem 1.5rem;
+        }
+
+            .btn-outline-light:hover {
+                background: white;
+                color: #2563eb !important;
+            }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid #e5e7eb;
+            background: white;
+            font-size: 0.9rem;
+        }
+
+            .footer a {
+                color: #2563eb;
+                text-decoration: none;
+                font-weight: 500;
+            }
+
+                .footer a:hover {
+                    text-decoration: underline;
+                }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark border-bottom box-shadow mb-4" style="background: linear-gradient(145deg, #2563eb, #1d4ed8);">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" asp-area="" asp-controller="Statics" asp-action="Index">
+                    <i class="fa-solid fa-money-bill-transfer me-2"></i>RandomPay
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Statics" asp-action="Index">
+                                <i class="fa-solid fa-house me-1"></i> Inicio
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Statics" asp-action="Privacy">
+                                <i class="fa-solid fa-shield-halved me-1"></i> Privacidad
+                            </a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        @if (currentUser != null)
+                        {
+                            <li class="nav-item d-flex align-items-center me-3 text-white">
+                                <i class="fa-solid fa-circle-user fs-5 me-2"></i>
+                                <span>Hola, <strong>@currentUser.NOMBRE</strong></span>
+                            </li>
+                            <li class="nav-item d-flex align-items-center">
+                                <a class="btn btn-outline-light btn-sm" asp-controller="RandomLogIn" asp-action="Index">
+                                    <i class="fa-solid fa-right-from-bracket me-1"></i> Salir
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-light btn-sm fw-bold" style="color: #2563eb; border-radius: 30px; padding: 0.4rem 1.8rem;" asp-controller="RandomLogIn" asp-action="Index">
+                                    Iniciar Sesión
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="footer border-top text-muted bg-white mt-auto py-4">
+        <div class="container text-center">
+            &copy; 2026 - RandomPay - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacidad</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

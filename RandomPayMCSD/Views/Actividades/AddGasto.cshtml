@@ -1,0 +1,77 @@
+﻿@model RandomPayMCSD.Models.Gasto
+@{
+    ViewData["Title"] = "Añadir gasto";
+    var participantes = ViewBag.Participantes as List<RandomPayMCSD.Models.Participante>;
+}
+
+<style>
+    .form-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .btn-primary-custom {
+        background: #2563eb;
+        color: white;
+        border-radius: 40px;
+        padding: 0.8rem 2rem;
+        font-weight: 600;
+        border: none;
+        width: 100%;
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="form-card">
+        <h2 class="fw-bold mb-4" style="color: #2563eb;">Añadir nuevo gasto</h2>
+        <form method="post">
+            <input type="hidden" asp-for="IDACTIVIDAD" />
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Concepto</label>
+                <input asp-for="CONCEPTO" class="form-control form-control-lg rounded-4" placeholder="Ej: Cena, gasolina..." required />
+                <span asp-validation-for="CONCEPTO" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Importe</label>
+                <div class="input-group">
+                    <input asp-for="IMPORTE" class="form-control form-control-lg rounded-4" step="0.01" required />
+                    <span class="input-group-text bg-light rounded-4">@(ViewBag.Moneda ?? "EUR")</span>
+                </div>
+                <span asp-validation-for="IMPORTE" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Pagado por</label>
+                <select asp-for="IDPAGADOR" class="form-select form-select-lg rounded-4" required>
+                    <option value="">-- Selecciona --</option>
+                    @if (participantes != null)
+                    {
+                        @foreach (var p in participantes)
+                        {
+                            <option value="@p.IDPARTICIPANTE">@p.NOMBREPARTICIPANTE</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="IDPAGADOR" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Fecha</label>
+                <input asp-for="FECHA" type="date" class="form-control form-control-lg rounded-4" required />
+                <span asp-validation-for="FECHA" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn-primary-custom">Guardar gasto</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

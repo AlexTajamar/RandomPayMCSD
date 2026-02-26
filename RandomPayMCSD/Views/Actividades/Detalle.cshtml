@@ -1,0 +1,130 @@
+﻿@model RandomPayMCSD.Models.Actividad
+@using RandomPayMCSD.Extensions
+@using RandomPayMCSD.Models
+@{
+    ViewData["Title"] = Model.NOMBREACTIVIDAD;
+    var balances = ViewBag.Balances as List<RandomPayMCSD.Services.BalanceItem>;
+    var currentUser = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+}
+
+<style>
+    .demo-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+        padding: 1.8rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .participant-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .balance-positive {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .balance-negative {
+        color: #ef4444;
+        font-weight: 600;
+    }
+
+    .badge-soft-primary {
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 0.3rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.85rem;
+    }
+
+    .btn-outline-primary-custom {
+        border: 2px solid #2563eb;
+        color: #2563eb;
+        border-radius: 40px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        background: white;
+    }
+
+        .btn-outline-primary-custom:hover {
+            background: #2563eb;
+            color: white;
+        }
+</style>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold" style="color: #2563eb;">@Model.NOMBREACTIVIDAD</h1>
+        <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn-outline-primary-custom">
+            <i class="fa-solid fa-plus me-2"></i>Añadir gasto
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="demo-card mb-4">
+                <h5 class="fw-bold mb-3">Gastos</h5>
+                @if (Model.Gastos != null && Model.Gastos.Any())
+                {
+                    @foreach (var gasto in Model.Gastos.OrderByDescending(g => g.FECHA))
+                    {
+                        <div class="participant-item">
+                            <div>
+                                <span class="fw-semibold">@gasto.CONCEPTO</span>
+                                <br />
+                                <small class="text-muted">@gasto.FECHA.ToString("dd MMM yyyy") · @gasto.Pagador?.NOMBREPARTICIPANTE</small>
+                            </div>
+                            <span class="fw-bold">@gasto.IMPORTE.ToString("N2") @Model.MONEDAPRINCIPAL</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No hay gastos todavía.</p>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="demo-card mb-4">
+                <h5 class="fw-bold mb-3">Balances</h5>
+                @if (balances != null && balances.Any())
+                {
+                    @foreach (var b in balances)
+                    {
+                        <div class="participant-item">
+                            <span class="fw-semibold">@b.Participante</span>
+                            <span class="@(b.Debe >= 0 ? "balance-positive" : "balance-negative")">
+                                @(b.Debe >= 0 ? "+" : "")@b.Debe.ToString("N2") @Model.MONEDAPRINCIPAL
+                            </span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No hay suficientes datos para calcular balances.</p>
+                }
+            </div>
+
+            <div class="demo-card">
+                <h5 class="fw-bold mb-3">Participantes</h5>
+                @foreach (var p in Model.Participantes)
+                {
+                    <div class="participant-item">
+                        <span>
+                            <i class="fa-regular fa-user me-2"></i>@p.NOMBREPARTICIPANTE
+                            @if (p.IDUSUARIO == currentUser?.IDUSUARIO)
+                            {
+                                <span class="badge-soft-primary ms-2">(tú)</span>
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

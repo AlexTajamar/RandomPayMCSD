@@ -11,43 +11,65 @@ namespace RandomPayMCSD.Repositories
 
         public RepositoryUsuarios(RandomPayContext context)
         {
-            _context = context;
+                  this._context = context;
         }
 
         public async Task<List<Usuario>> GetAllAsync()
         {
-            return await _context.Usuarios.ToListAsync();
+            var consulta = from datos in this._context.Usuarios
+                           select datos;
+
+            return await consulta.ToListAsync();
         }
 
         public async Task<Usuario> GetByIdAsync(int id)
         {
-            return await _context.Usuarios.FindAsync(id);
+            var consulta = from datos in this._context.Usuarios
+                           where datos.IDUSUARIO == id
+                           select datos;
+
+            return await consulta.FirstOrDefaultAsync();
         }
 
         public async Task<Usuario> GetByEmailAsync(string email)
         {
-            return await _context.Usuarios.FirstOrDefaultAsync(u => u.EMAIL == email);
+            var consulta = from datos in this._context.Usuarios
+                           where datos.EMAIL == email
+                           select datos;
+
+            return await consulta.FirstOrDefaultAsync();
         }
 
         public async Task AddAsync(Usuario usuario)
         {
-            await _context.Usuarios.AddAsync(usuario);
-            await _context.SaveChangesAsync();
+            var consulta = from datos in this._context.Usuarios select datos.IDUSUARIO;
+
+            if (await consulta.AnyAsync())
+            {
+                usuario.IDUSUARIO = await consulta.MaxAsync() + 1;
+            }
+            else
+            {
+                usuario.IDUSUARIO = 1;
+            }
+
+            await this._context.Usuarios.AddAsync(usuario);
+            await this._context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Usuario usuario)
         {
-            _context.Usuarios.Update(usuario);
-            await _context.SaveChangesAsync();
+            this._context.Usuarios.Update(usuario);
+            await this._context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var usuario = await GetByIdAsync(id);
+            Usuario usuario = await this.GetByIdAsync(id);
             if (usuario != null)
             {
-                _context.Usuarios.Remove(usuario);
-                await _context.SaveChangesAsync();
+                this._context.Usuarios.Remove(usuario);
+                await this._context.SaveChangesAsync();
             }
         }
     }

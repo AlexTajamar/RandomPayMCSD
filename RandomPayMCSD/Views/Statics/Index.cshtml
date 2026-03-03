@@ -6,7 +6,7 @@
 }
 
 <style>
-    /* Reutilizamos los estilos modernos que ya teníamos */
+    /* Estilos modernos */
     .welcome-card {
         background: white;
         border-radius: 24px;
@@ -33,6 +33,7 @@
         .btn-brand-action:hover {
             transform: translateY(-4px);
             box-shadow: 0 10px 15px rgba(0,0,0,0.15);
+            color: white; /* Para que el texto no cambie de color al pasar el ratón */
         }
 
         .btn-brand-action i {
@@ -105,13 +106,13 @@
                 </a>
             </div>
             <div class="col-md-4">
-                <a href="#" class="btn-brand-action">
+                <a asp-controller="Statics" asp-action="RandomPay" class="btn-brand-action" style="background: linear-gradient(145deg, #8b5cf6, #6d28d9);">
                     <i class="fa-solid fa-dice"></i>
                     <span>Nuevo RandomPay</span>
                 </a>
             </div>
             <div class="col-md-4">
-                <a href="#" class="btn-brand-action">
+                <a asp-controller="Statics" asp-action="Divisas" class="btn-brand-action" style="background: linear-gradient(145deg, #10b981, #059669);">
                     <i class="fa-solid fa-arrow-right-arrow-left"></i>
                     <span>DivisaChange</span>
                 </a>

@@ -11,41 +11,57 @@ namespace RandomPayMCSD.Repositories
 
         public RepositoryGastos(RandomPayContext context)
         {
-            _context = context;
+            this._context = context;
         }
 
         public async Task<List<Gasto>> GetByActividadIdAsync(int actividadId)
         {
-            return await _context.Gastos
-                .Where(g => g.IDACTIVIDAD == actividadId)
-                .Include(g => g.Pagador)
-                .ToListAsync();
+            var consulta = from datos in this._context.Gastos
+                           where datos.IDACTIVIDAD == actividadId
+                           select datos;
+
+            return await consulta.ToListAsync();
         }
 
         public async Task<Gasto?> GetByIdAsync(int id)
         {
-            return await _context.Gastos.FindAsync(id);
+            var consulta = from datos in this._context.Gastos
+                           where datos.IDGASTO == id
+                           select datos;
+
+            return await consulta.FirstOrDefaultAsync();
         }
 
         public async Task AddAsync(Gasto gasto)
         {
-            await _context.Gastos.AddAsync(gasto);
-            await _context.SaveChangesAsync();
+            var consulta = from datos in this._context.Gastos select datos.IDGASTO;
+
+            if (await consulta.AnyAsync())
+            {
+                gasto.IDGASTO = await consulta.MaxAsync() + 1;
+            }
+            else
+            {
+                gasto.IDGASTO = 1;
+            }
+
+            await this._context.Gastos.AddAsync(gasto);
+            await this._context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Gasto gasto)
         {
-            _context.Gastos.Update(gasto);
-            await _context.SaveChangesAsync();
+            this._context.Gastos.Update(gasto);
+            await this._context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var gasto = await GetByIdAsync(id);
+            Gasto gasto = await this.GetByIdAsync(id);
             if (gasto != null)
             {
-                _context.Gastos.Remove(gasto);
-                await _context.SaveChangesAsync();
+                this._context.Gastos.Remove(gasto);
+                await this._context.SaveChangesAsync();
             }
         }
     }

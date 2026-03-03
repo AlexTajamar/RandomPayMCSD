@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RandomPayMCSD.Data;
 using RandomPayMCSD.Repositories;
+using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,10 +19,12 @@ string conecctionString = builder.Configuration.GetConnectionString("SqlRandom")
 builder.Services.AddDbContext<RandomPayContext>
     (options => options.UseSqlServer(conecctionString));
 //builder.Services.AddTransient<IRepositoryEmpleados,RepositoryEmpleadosSQLServer>();
-builder.Services.AddScoped<RepositoryUsuarios>();
-builder.Services.AddScoped<RepositoryActividades>();
-builder.Services.AddScoped<RepositoryGastos>();
-builder.Services.AddScoped<BalanceService>();
+builder.Services.AddScoped<IRepositoryUsuarios, RepositoryUsuarios>();
+builder.Services.AddScoped<IRepositoryActividades, RepositoryActividades>();
+builder.Services.AddScoped<IRepositoryGastos, RepositoryGastos>();
+builder.Services.AddScoped<IRepositoryParticipantes, RepositoryParticipantes>();
+builder.Services.AddTransient<BalanceService>();
+builder.Services.AddTransient<InvitationService>();
 
 var app = builder.Build();
 

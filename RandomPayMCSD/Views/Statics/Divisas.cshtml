@@ -1,0 +1,90 @@
+﻿@{
+    ViewData["Title"] = "DivisaChange Pro";
+    double resultado = ViewBag.Resultado ?? 0;
+    var tasas = ViewBag.Tasas as Dictionary<string, double>;
+}
+
+<style>
+    .convert-card {
+        background: white;
+        border-radius: 24px;
+        padding: 2.5rem;
+        max-width: 550px;
+        margin: 40px auto;
+        border-top: 8px solid #10b981;
+        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
+    }
+
+    .btn-convert {
+        background: linear-gradient(145deg, #10b981, #059669);
+        color: white;
+        border-radius: 15px;
+        padding: 0.8rem;
+        font-weight: bold;
+        border: none;
+        width: 100%;
+    }
+
+    .result-box {
+        background: #ecfdf5;
+        border: 2px dashed #10b981;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+</style>
+
+<div class="container">
+    <div class="convert-card text-center">
+        <i class="fa-solid fa-coins fa-3x mb-3" style="color: #10b981;"></i>
+        <h2 class="fw-bold mb-4" style="color: #065f46;">DivisaChange</h2>
+
+        <form asp-action="Divisas" method="post">
+            <div class="mb-4 text-start">
+                <label class="form-label fw-bold">Cantidad</label>
+                <input type="number" name="importe" step="0.01" class="form-control form-control-lg rounded-3"
+                       placeholder="0.00" value="@ViewBag.Importe" required>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 text-start">
+                    <label class="form-label small fw-bold">De:</label>
+                    <select name="origen" class="form-select rounded-3">
+                        @foreach (var moneda in tasas.Keys)
+                        {
+                            <option value="@moneda" selected="@(moneda == ViewBag.Origen)">@moneda</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 text-start">
+                    <label class="form-label small fw-bold">A:</label>
+                    <select name="destino" class="form-select rounded-3">
+                        @foreach (var moneda in tasas.Keys)
+                        {
+                            <option value="@moneda" selected="@(moneda == ViewBag.Destino)">@moneda</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-convert">
+                <i class="fa-solid fa-money-bill-transfer me-2"></i>Calcular Conversión
+            </button>
+        </form>
+
+        @if (resultado > 0)
+        {
+            <div class="result-box animate__animated animate__zoomIn">
+                <p class="text-muted mb-1 small fw-bold">RESULTADO</p>
+                <h2 class="fw-bold text-success mb-0">@resultado @ViewBag.Destino</h2>
+                <p class="small text-muted mt-2 mb-0">Calculado a tasa de mercado actual.</p>
+            </div>
+        }
+
+        <div class="mt-4">
+            <a asp-action="Index" class="text-decoration-none text-muted small">
+                <i class="fa-solid fa-house me-1"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+</div>

@@ -1,9 +1,21 @@
 ﻿using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
-using RandomPayMCSD.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace RandomPayMCSD.Services
 {
+    // Esta clase nos sirve para pasar los datos calculados a la vista
+    public class BalanceItem
+    {
+        public string Participante { get; set; }
+        public decimal Debe { get; set; }
+        // Si Debe es Positivo (+): Ha pagado de más, le deben dinero.
+        // Si Debe es Negativo (-): Ha pagado de menos, debe dinero al grupo.
+    }
+
     public class BalanceService
     {
         private readonly IRepositoryActividades _repoActividades;
@@ -13,82 +25,58 @@ namespace RandomPayMCSD.Services
             _repoActividades = repoActividades;
         }
 
-        public async Task<List<BalanceParticipante>> CalcularBalancesAsync(int actividadId)
+        // 1. CÁLCULO ESTILO TRICOUNT
+        public async Task<List<BalanceItem>> GetBalancesActividadAsync(int idActividad)
         {
-            var actividad = await _repoActividades.GetByIdWithDetailsAsync(actividadId);
-            if (actividad == null) return new List<BalanceParticipante>();
+            Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
 
-            var participantes = actividad.Participantes.ToList();
-            var gastos = actividad.Gastos.ToList();
-
-            if (!participantes.Any() || !gastos.Any())
-                return participantes.Select(p => new BalanceParticipante
-                {
-                    Nombre = p.NOMBREPARTICIPANTE,
-                    DebeRecibir = 0
-                }).ToList();
-
-            // 1. Calcular total pagado por cada participante
-            var pagado = participantes.ToDictionary(p => p.IDPARTICIPANTE, p => 0m);
-            foreach (var gasto in gastos)
+            if (actividad == null || actividad.Participantes == null || !actividad.Participantes.Any())
             {
-                pagado[gasto.IDPAGADOR] += gasto.IMPORTE;
+                return new List<BalanceItem>();
             }
 
-            // 2. Media por persona
-            var totalGastos = gastos.Sum(g => g.IMPORTE);
-            var media = totalGastos / participantes.Count;
+            int totalParticipantes = actividad.Participantes.Count;
+            // Sumamos todos los gastos. Si no hay, es 0.
+            decimal totalGastos = actividad.Gastos?.Sum(g => g.IMPORTE) ?? 0;
+            // Lo que debería haber pagado cada uno
+            decimal cuotaPorPersona = totalParticipantes > 0 ? totalGastos / totalParticipantes : 0;
 
-            // 3. Balance neto: media - pagado (positivo = debe recibir, negativo = debe pagar)
-            var balances = new List<BalanceParticipante>();
-            foreach (var p in participantes)
+            List<BalanceItem> balances = new List<BalanceItem>();
+
+            foreach (var participante in actividad.Participantes)
             {
-                var debe = media - pagado[p.IDPARTICIPANTE];
-                balances.Add(new BalanceParticipante
+                // ¿Cuánto ha puesto de su bolsillo esta persona?
+                decimal totalPagadoPorPersona = actividad.Gastos?
+                    .Where(g => g.IDPAGADOR == participante.IDPARTICIPANTE)
+                    .Sum(g => g.IMPORTE) ?? 0;
+
+                // Su balance final = Lo que puso - Lo que le tocaba poner
+                decimal balanceFinal = totalPagadoPorPersona - cuotaPorPersona;
+
+                balances.Add(new BalanceItem
                 {
-                    Nombre = p.NOMBREPARTICIPANTE,
-                    DebeRecibir = debe
+                    Participante = participante.NOMBREPARTICIPANTE,
+                    Debe = Math.Round(balanceFinal, 2)
                 });
             }
 
-            return balances;
+            // Devolvemos la lista ordenada: primero los que tienen saldo a favor
+            return balances.OrderByDescending(b => b.Debe).ToList();
         }
 
-        // Método opcional para simplificar deudas (algoritmo greedy)
-        public List<TransaccionSimplificada> SimplificarDeudas(List<BalanceParticipante> balances)
+        // 2. FUNCIONALIDAD RULETA RANDOM 
+        public async Task<Participante> ElegirPagadorAlAzar(int idActividad)
         {
-            var deudores = balances.Where(b => b.DebeRecibir < 0)
-                                   .OrderBy(b => b.DebeRecibir)
-                                   .ToList();
-            var acreedores = balances.Where(b => b.DebeRecibir > 0)
-                                     .OrderByDescending(b => b.DebeRecibir)
-                                     .ToList();
+            Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
 
-            var transacciones = new List<TransaccionSimplificada>();
+            if (actividad == null || actividad.Participantes == null || !actividad.Participantes.Any())
+                return null;
 
-            int i = 0, j = 0;
-            while (i < deudores.Count && j < acreedores.Count)
-            {
-                var deudor = deudores[i];
-                var acreedor = acreedores[j];
+            // Creamos un random y elegimos un índice de la lista de participantes
+            Random rnd = new Random();
+            int indexMalaSuerte = rnd.Next(actividad.Participantes.Count);
 
-                var cantidad = Math.Min(-deudor.DebeRecibir, acreedor.DebeRecibir);
-
-                transacciones.Add(new TransaccionSimplificada
-                {
-                    Deudor = deudor.Nombre,
-                    Acreedor = acreedor.Nombre,
-                    Cantidad = cantidad
-                });
-
-                deudor.DebeRecibir += cantidad;
-                acreedor.DebeRecibir -= cantidad;
-
-                if (deudor.DebeRecibir == 0) i++;
-                if (acreedor.DebeRecibir == 0) j++;
-            }
-
-            return transacciones;
+            return actividad.Participantes.ElementAt(indexMalaSuerte);
         }
     }
 }

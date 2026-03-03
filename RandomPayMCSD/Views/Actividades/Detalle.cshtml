@@ -59,9 +59,12 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="fw-bold" style="color: #2563eb;">@Model.NOMBREACTIVIDAD</h1>
-        <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn-outline-primary-custom">
-            <i class="fa-solid fa-plus me-2"></i>Añadir gasto
-        </a>
+
+        <div>
+            <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn-outline-primary-custom">
+                <i class="fa-solid fa-plus me-2"></i>Añadir gasto
+            </a>
+        </div>
     </div>
 
     <div class="row">

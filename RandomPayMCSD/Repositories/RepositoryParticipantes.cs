@@ -16,20 +16,36 @@ namespace RandomPayMCSD.Repositories
 
         public async Task<List<Participante>> GetByActividadIdAsync(int actividadId)
         {
-            return await _context.Participantes
-                .Where(p => p.IDACTIVIDAD == actividadId)
-                .ToListAsync();
+            var consulta = from datos in this._context.Participantes
+                           where datos.IDACTIVIDAD == actividadId
+                           select datos;
+            return await consulta.ToListAsync();
         }
 
         public async Task<Participante?> GetByIdAsync(int id)
         {
-            return await _context.Participantes.FindAsync(id);
+            var consulta = from datos in this._context.Participantes
+                           where datos.IDPARTICIPANTE == id
+                           select datos;
+            return await consulta.FirstOrDefaultAsync();
+        }
+
+        // --- AÑADE ESTE MÉTODO QUE FALTA ---
+        public async Task<bool> ExisteParticipanteEnActividad(int idActividad, string nombre, int? idUsuario)
+        {
+            var consulta = from datos in this._context.Participantes
+                           where datos.IDACTIVIDAD == idActividad
+                              && datos.NOMBREPARTICIPANTE == nombre
+                           select datos;
+            return await consulta.AnyAsync();
         }
 
         public async Task AddAsync(Participante participante)
         {
-            await _context.Participantes.AddAsync(participante);
-            await _context.SaveChangesAsync();
+            var consulta = from datos in this._context.Participantes select datos.IDPARTICIPANTE;
+            participante.IDPARTICIPANTE = await consulta.AnyAsync() ? await consulta.MaxAsync() + 1 : 1;
+            await this._context.Participantes.AddAsync(participante);
+            await this._context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
@@ -39,20 +55,6 @@ namespace RandomPayMCSD.Repositories
             {
                 _context.Participantes.Remove(participante);
                 await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task<bool> ExisteParticipanteEnActividad(int actividadId, string nombre, int? idUsuario)
-        {
-            if (idUsuario.HasValue)
-            {
-                return await _context.Participantes
-                    .AnyAsync(p => p.IDACTIVIDAD == actividadId && p.IDUSUARIO == idUsuario);
-            }
-            else
-            {
-                return await _context.Participantes
-                    .AnyAsync(p => p.IDACTIVIDAD == actividadId && p.NOMBREPARTICIPANTE == nombre);
             }
         }
     }

@@ -1,55 +1,129 @@
 ﻿@model RandomPayMCSD.Models.Gasto
 @{
-    ViewData["Title"] = "Añadir gasto";
+    // Esta vista servirá tanto para Crear como para Editar
+    bool esEdicion = Model.IDGASTO > 0;
+    ViewData["Title"] = esEdicion ? "Editar Gasto" : "Añadir Gasto";
+
     var participantes = ViewBag.Participantes as List<RandomPayMCSD.Models.Participante>;
+    var divisas = ViewBag.Divisas as List<RandomPayMCSD.Models.Divisa>;
+    var repartosExistentes = ViewBag.Repartos as List<RandomPayMCSD.Models.RepartoGasto>;
+
+    var divisasJson = System.Text.Json.JsonSerializer.Serialize(divisas?.Select(d => new { d.Codigo, d.Tasa }));
 }
 
 <style>
-    .form-card {
+    .clean-card {
         background: white;
-        border-radius: 24px;
-        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
-        padding: 2rem;
-        max-width: 600px;
-        margin: 0 auto;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
     }
 
-    .btn-primary-custom {
-        background: #2563eb;
-        color: white;
-        border-radius: 40px;
-        padding: 0.8rem 2rem;
-        font-weight: 600;
-        border: none;
-        width: 100%;
+    .custom-input {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        transition: all 0.2s;
+        font-weight: 500;
     }
+
+        .custom-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
+        }
+
+    .participant-row {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 15px 20px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+
+        .participant-row:hover {
+            border-color: #cbd5e1;
+            background: #f1f5f9;
+        }
+
+    .amount-input {
+        width: 120px;
+        text-align: right;
+        border: 2px solid transparent;
+        background: transparent;
+        font-weight: bold;
+        font-size: 1.1rem;
+        color: #1e293b;
+        padding: 5px;
+        border-radius: 8px;
+    }
+
+        .amount-input:focus {
+            border-bottom: 2px solid #3b82f6;
+            outline: none;
+            background: white;
+        }
+
+        .amount-input.manual-edit {
+            color: #3b82f6; /* Azul si fue editado manualmente */
+        }
 </style>
 
-<div class="container mt-5">
-    <div class="form-card">
-        <h2 class="fw-bold mb-4" style="color: #2563eb;">Añadir nuevo gasto</h2>
-        <form method="post">
+<div class="container mt-4 mb-5 max-w-4xl">
+    <div class="clean-card">
+        <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+            <div class="p-3 rounded-circle bg-primary bg-opacity-10 me-3">
+                <i class="fa-solid @(esEdicion ? "fa-pen" : "fa-receipt") fa-2x text-primary"></i>
+            </div>
+            <h2 class="fw-bold mb-0 text-dark">@(esEdicion ? "Editar Gasto" : "Detalle del Gasto")</h2>
+        </div>
+
+        <form asp-action="@(esEdicion ? "EditGasto" : "AddGasto")" method="post">
+
             <input type="hidden" asp-for="IDACTIVIDAD" />
+            @if (esEdicion)
+            {
+                <input type="hidden" asp-for="IDGASTO" />
+                <input type="hidden" asp-for="FECHA" />
+            }
 
-            <div class="mb-4">
-                <label class="form-label fw-semibold">Concepto</label>
-                <input asp-for="CONCEPTO" class="form-control form-control-lg rounded-4" placeholder="Ej: Cena, gasolina..." required />
-                <span asp-validation-for="CONCEPTO" class="text-danger"></span>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label fw-semibold">Importe</label>
-                <div class="input-group">
-                    <input asp-for="IMPORTE" class="form-control form-control-lg rounded-4" step="0.01" required />
-                    <span class="input-group-text bg-light rounded-4">@(ViewBag.Moneda ?? "EUR")</span>
+            <div class="row g-4 mb-4">
+                <div class="col-md-12">
+                    <label class="form-label small text-muted fw-bold">CONCEPTO</label>
+                    <input type="text" asp-for="CONCEPTO" class="form-control custom-input" placeholder="Ej: Cena en el centro..." required>
                 </div>
-                <span asp-validation-for="IMPORTE" class="text-danger"></span>
+
+                <div class="col-md-8">
+                    <label class="form-label small text-muted fw-bold">IMPORTE TOTAL</label>
+                    <input type="number" step="0.01" name="importeString" id="totalInput" class="form-control custom-input fs-4 fw-bold text-primary"
+                           value="@(Model.IMPORTE > 0 ? Model.IMPORTE.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label small text-muted fw-bold">MONEDA</label>
+                    <select name="divisaSeleccionada" id="divisaSelect" class="form-select custom-input">
+                        @if (divisas != null)
+                        {
+                            @foreach (var d in divisas)
+                            {
+                                <option value="@d.Codigo" selected="@(d.Codigo == "EUR")">@d.Codigo</option>
+                            }
+                        }
+                    </select>
+                </div>
             </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-semibold">Pagado por</label>
-                <select asp-for="IDPAGADOR" class="form-select form-select-lg rounded-4" required>
-                    <option value="">-- Selecciona --</option>
+            <div id="conversionInfo" class="alert alert-info py-2 mb-4" style="display:none; font-weight: 500;">
+                <i class="fa-solid fa-arrow-right-arrow-left me-2"></i> Equivalente a <span id="conversionResult" class="fw-bold">0</span> EUR
+            </div>
+
+            <div class="mb-5">
+                <label class="form-label small text-muted fw-bold">¿QUIÉN ADELANTÓ EL DINERO?</label>
+                <select asp-for="IDPAGADOR" class="form-select custom-input" required>
                     @if (participantes != null)
                     {
                         @foreach (var p in participantes)
@@ -58,20 +132,162 @@
                         }
                     }
                 </select>
-                <span asp-validation-for="IDPAGADOR" class="text-danger"></span>
             </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-semibold">Fecha</label>
-                <input asp-for="FECHA" type="date" class="form-control form-control-lg rounded-4" required />
-                <span asp-validation-for="FECHA" class="text-danger"></span>
+            <div class="p-4 bg-light rounded-4 border">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-dark mb-0">¿Cómo se divide?</h5>
+                    <button type="button" class="btn btn-outline-primary rounded-pill px-4 fw-bold" id="btnEqual">
+                        <i class="fa-solid fa-scale-balanced me-2"></i> Restaurar Partes Iguales
+                    </button>
+                </div>
+
+                <div id="participantsList">
+                    @if (participantes != null)
+                    {
+                        for (int i = 0; i < participantes.Count; i++)
+                        {
+                            var p = participantes[i];
+                            var repartoPrevio = repartosExistentes?.FirstOrDefault(r => r.IdParticipante == p.IDPARTICIPANTE);
+                            double valorMonto = repartoPrevio?.Cantidad ?? 0;
+                            bool estaMarcado = esEdicion ? (repartoPrevio != null) : true;
+
+                            <div class="participant-row">
+                                <div class="d-flex align-items-center">
+                                    <input type="hidden" name="idsParticipantes" value="@p.IDPARTICIPANTE" />
+                                    <div class="form-check form-switch me-3">
+                                        <input class="form-check-input check-participante" type="checkbox" role="switch" @(estaMarcado ? "checked" : "") style="cursor: pointer; width: 2.5em; height: 1.25em;">
+                                    </div>
+                                    <span class="fw-bold text-dark fs-5">@p.NOMBREPARTICIPANTE</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <input type="number" step="0.01" name="cantidadesAsignadas" class="amount-input participante-monto"
+                                           value="@valorMonto.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                    <span class="ms-2 text-muted fw-bold divisa-label">EUR</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
             </div>
 
-            <button type="submit" class="btn-primary-custom">Guardar gasto</button>
+            <div class="d-flex justify-content-end gap-3 mt-4">
+                <a asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light border py-3 px-5 fw-bold" style="border-radius: 12px;">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary py-3 px-5 fw-bold shadow-sm" style="border-radius: 12px;">
+                    @(esEdicion ? "Actualizar Gasto" : "Guardar Gasto") <i class="fa-solid fa-check ms-2"></i>
+                </button>
+            </div>
         </form>
     </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const tasasDB = @Html.Raw(divisasJson ?? "[]");
+        const totalInput = document.getElementById('totalInput');
+        const divisaSelect = document.getElementById('divisaSelect');
+        const btnEqual = document.getElementById('btnEqual');
+        const montos = document.querySelectorAll('.participante-monto');
+        const checks = document.querySelectorAll('.check-participante');
+        const labelsMoneda = document.querySelectorAll('.divisa-label');
+
+        let manualEdits = new Set();
+
+        function actualizarDivisas() {
+            const moneda = divisaSelect.value;
+            labelsMoneda.forEach(l => l.innerText = moneda);
+
+            const importe = parseFloat(totalInput.value) || 0;
+            const infoDiv = document.getElementById('conversionInfo');
+            if(moneda !== 'EUR' && importe > 0) {
+                const tasa = tasasDB.find(t => t.Codigo === moneda)?.Tasa || 1;
+                document.getElementById('conversionResult').innerText = (importe / tasa).toFixed(2);
+                infoDiv.style.display = 'block';
+            } else {
+                infoDiv.style.display = 'none';
+            }
+        }
+
+        function recalcularSobrante() {
+            const total = parseFloat(totalInput.value) || 0;
+            let sumManual = 0;
+            let autoIndexes = [];
+
+            checks.forEach((check, index) => {
+                if (check.checked) {
+                    if (manualEdits.has(index)) {
+                        sumManual += parseFloat(montos[index].value) || 0;
+                    } else {
+                        autoIndexes.push(index);
+                    }
+                } else {
+                    montos[index].value = "0.00";
+                    montos[index].classList.remove('manual-edit');
+                }
+            });
+
+            const restante = Math.max(0, total - sumManual);
+
+            if (autoIndexes.length > 0) {
+                const porPersona = restante / autoIndexes.length;
+                autoIndexes.forEach(idx => {
+                    montos[idx].value = porPersona.toFixed(2);
+                    montos[idx].classList.remove('manual-edit');
+                });
+            }
+        }
+
+        totalInput.addEventListener('input', () => {
+            actualizarDivisas();
+            if(manualEdits.size === 0) repartirEquitativamente();
+            else recalcularSobrante();
+        });
+
+        divisaSelect.addEventListener('change', actualizarDivisas);
+
+        montos.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                if (checks[index].checked) {
+                    manualEdits.add(index);
+                    input.classList.add('manual-edit');
+                    recalcularSobrante();
+                }
+            });
+        });
+
+        checks.forEach((check, index) => {
+            check.addEventListener('change', () => {
+                manualEdits.delete(index);
+                if(manualEdits.size === 0) repartirEquitativamente();
+                else recalcularSobrante();
+            });
+        });
+
+        function repartirEquitativamente() {
+            manualEdits.clear();
+            const total = parseFloat(totalInput.value) || 0;
+            const activos = Array.from(checks).filter(c => c.checked);
+
+            if (activos.length > 0) {
+                const porPersona = total / activos.length;
+                checks.forEach((check, index) => {
+                    if (check.checked) {
+                        montos[index].value = porPersona.toFixed(2);
+                        montos[index].classList.remove('manual-edit');
+                    }
+                });
+            }
+        }
+
+        btnEqual.addEventListener('click', repartirEquitativamente);
+
+        actualizarDivisas();
+
+        @if (!esEdicion)
+        {
+                    <text>repartirEquitativamente();</text>
+        }
+    </script>
 }

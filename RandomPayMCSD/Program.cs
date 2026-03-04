@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RandomPayMCSD.Data;
+using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Repositories;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
@@ -23,6 +24,8 @@ builder.Services.AddScoped<IRepositoryUsuarios, RepositoryUsuarios>();
 builder.Services.AddScoped<IRepositoryActividades, RepositoryActividades>();
 builder.Services.AddScoped<IRepositoryGastos, RepositoryGastos>();
 builder.Services.AddScoped<IRepositoryParticipantes, RepositoryParticipantes>();
+builder.Services.AddTransient<IRepositoryDivisas, RepositoryDivisas>();
+builder.Services.AddTransient<IRepositoryRepartos, RepositoryRepartos>();
 builder.Services.AddTransient<BalanceService>();
 builder.Services.AddTransient<InvitationService>();
 

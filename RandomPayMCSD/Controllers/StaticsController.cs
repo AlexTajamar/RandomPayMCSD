@@ -1,17 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
+using RandomPayMCSD.Extensions;
+using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
-using RandomPayMCSD.Extensions;
 
 namespace RandomPayMCSD.Controllers
 {
     public class StaticsController : Controller
     {
         private IRepositoryActividades repoActividades;
-
-        public StaticsController(IRepositoryActividades repoActividades)
+        private IRepositoryDivisas repoDivisas;
+        public StaticsController(IRepositoryActividades repoActividades,IRepositoryDivisas repoDivisas)
         {
             this.repoActividades = repoActividades;
+            this.repoDivisas = repoDivisas;
         }
 
         public async Task<IActionResult> Index()
@@ -37,6 +39,7 @@ namespace RandomPayMCSD.Controllers
 
             return View(participantes);
         }
+
 
         // --- 2. AÑADIR UN NOMBRE ---
         [HttpPost]
@@ -94,52 +97,36 @@ namespace RandomPayMCSD.Controllers
             HttpContext.Session.Remove("RULETA_NOMBRES");
             return RedirectToAction("RandomPay");
         }
-
-        // --- 1. MOSTRAR LA VISTA DE DIVISAS ---
- 
-        // --- 2. LOGICA DE CONVERSIÓN (C#) ---
-        // --- 1. LISTADO DE TASAS (Base 1 EUR) ---
-        private Dictionary<string, double> GetTasas()
+        public async Task<IActionResult> Divisas()
         {
-            return new Dictionary<string, double>
-    {
-        { "EUR", 1.0 },    { "USD", 1.09 },   { "GBP", 0.86 },   { "JPY", 163.5 },
-        { "CHF", 0.95 },   { "CAD", 1.48 },   { "AUD", 1.66 },   { "CNY", 7.85 },
-        { "HKD", 8.52 },   { "NZD", 1.80 },   { "SEK", 11.35 },  { "NOK", 11.45 },
-        { "DKK", 7.46 },   { "INR", 90.50 },  { "BRL", 5.45 },   { "ZAR", 20.60 },
-        { "MXN", 18.50 },  { "SGD", 1.46 },   { "KRW", 1450.0 }, { "TRY", 34.00 },
-        { "PLN", 4.32 }
-    };
-        }
-
-        // --- 2. VISTA (GET) ---
-        public IActionResult Divisas()
-        {
-            ViewBag.Tasas = GetTasas();
+            var divisas = await this.repoDivisas.GetDivisasAsync();
             ViewBag.Resultado = 0;
-            return View();
+            return View(divisas);
         }
-
-        // --- 3. CÁLCULO (POST) ---
         [HttpPost]
-        public IActionResult Divisas(double importe, string origen, string destino)
+        public async Task<IActionResult> Divisas(double? importe, string origen, string destino)
         {
-            var tasas = GetTasas();
-            ViewBag.Tasas = tasas; // Para que el desplegable no se vacíe al recargar
+            // Cargamos siempre las divisas para los selects de la vista
+            var divisas = await this.repoDivisas.GetDivisasAsync();
 
-            if (importe > 0 && tasas.ContainsKey(origen) && tasas.ContainsKey(destino))
+            if (importe != null && importe > 0)
             {
-                // Lógica de conversión sencilla
-                double importeEnEuros = importe / tasas[origen];
-                double resultado = importeEnEuros * tasas[destino];
+                var dOrigen = await this.repoDivisas.GetDivisaByCodigoAsync(origen);
+                var dDestino = await this.repoDivisas.GetDivisaByCodigoAsync(destino);
 
-                ViewBag.Importe = importe;
-                ViewBag.Origen = origen;
-                ViewBag.Destino = destino;
-                ViewBag.Resultado = Math.Round(resultado, 2);
+                if (dOrigen != null && dDestino != null)
+                {
+                    // Fórmula: (Importe / Tasa de Origen) * Tasa de Destino
+                    double resultado = (importe.Value / dOrigen.Tasa) * dDestino.Tasa;
+
+                    ViewBag.Importe = importe;
+                    ViewBag.Origen = origen;
+                    ViewBag.Destino = destino;
+                    ViewBag.Resultado = Math.Round(resultado, 2);
+                }
             }
 
-            return View();
+            return View(divisas);
         }
     }
 }

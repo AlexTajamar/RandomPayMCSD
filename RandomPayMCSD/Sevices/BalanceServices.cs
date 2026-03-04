@@ -1,82 +1,95 @@
 ﻿using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace RandomPayMCSD.Services
 {
-    // Esta clase nos sirve para pasar los datos calculados a la vista
     public class BalanceItem
     {
+        public int IdParticipante { get; set; }
         public string Participante { get; set; }
-        public decimal Debe { get; set; }
-        // Si Debe es Positivo (+): Ha pagado de más, le deben dinero.
-        // Si Debe es Negativo (-): Ha pagado de menos, debe dinero al grupo.
+        public double Debe { get; set; } // En positivo si le deben dinero, en negativo si debe
     }
 
     public class BalanceService
     {
-        private readonly IRepositoryActividades _repoActividades;
+        private IRepositoryGastos _repoGastos;
+        private IRepositoryParticipantes _repoParticipantes;
+        private IRepositoryRepartos _repoRepartos;
 
-        public BalanceService(IRepositoryActividades repoActividades)
+        public BalanceService(
+            IRepositoryGastos repoGastos,
+            IRepositoryParticipantes repoParticipantes,
+            IRepositoryRepartos repoRepartos)
         {
-            _repoActividades = repoActividades;
+            _repoGastos = repoGastos;
+            _repoParticipantes = repoParticipantes;
+            _repoRepartos = repoRepartos;
         }
 
-        // 1. CÁLCULO ESTILO TRICOUNT
         public async Task<List<BalanceItem>> GetBalancesActividadAsync(int idActividad)
         {
-            Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
+            // 1. Obtenemos participantes, gastos y todos los repartos asociados a la actividad
+            List<Participante> participantes = await _repoParticipantes.GetByActividadIdAsync(idActividad);
 
-            if (actividad == null || actividad.Participantes == null || !actividad.Participantes.Any())
-            {
-                return new List<BalanceItem>();
-            }
-
-            int totalParticipantes = actividad.Participantes.Count;
-            // Sumamos todos los gastos. Si no hay, es 0.
-            decimal totalGastos = actividad.Gastos?.Sum(g => g.IMPORTE) ?? 0;
-            // Lo que debería haber pagado cada uno
-            decimal cuotaPorPersona = totalParticipantes > 0 ? totalGastos / totalParticipantes : 0;
+            // AQUÍ ESTABA EL ERROR: Usamos tu método GetByActividadIdAsync
+            List<Gasto> gastos = await _repoGastos.GetByActividadIdAsync(idActividad);
 
             List<BalanceItem> balances = new List<BalanceItem>();
 
-            foreach (var participante in actividad.Participantes)
+            // Inicializamos el balance a 0 para cada persona
+            foreach (var p in participantes)
             {
-                // ¿Cuánto ha puesto de su bolsillo esta persona?
-                decimal totalPagadoPorPersona = actividad.Gastos?
-                    .Where(g => g.IDPAGADOR == participante.IDPARTICIPANTE)
-                    .Sum(g => g.IMPORTE) ?? 0;
-
-                // Su balance final = Lo que puso - Lo que le tocaba poner
-                decimal balanceFinal = totalPagadoPorPersona - cuotaPorPersona;
-
                 balances.Add(new BalanceItem
                 {
-                    Participante = participante.NOMBREPARTICIPANTE,
-                    Debe = Math.Round(balanceFinal, 2)
+                    IdParticipante = p.IDPARTICIPANTE,
+                    Participante = p.NOMBREPARTICIPANTE,
+                    Debe = 0
                 });
             }
 
-            // Devolvemos la lista ordenada: primero los que tienen saldo a favor
+            // 2. Calculamos los balances reales leyendo de los gastos y los repartos
+            foreach (var gasto in gastos)
+            {
+                // A) Sumamos el importe total al que PAGÓ (porque se lo deben a él)
+                var pagador = balances.FirstOrDefault(b => b.IdParticipante == gasto.IDPAGADOR);
+                if (pagador != null)
+                {
+                    pagador.Debe += (double)gasto.IMPORTE;
+                }
+
+                // B) Restamos la cantidad individual que cada persona DEBE (según la nueva tabla de repartos)
+                var repartosDelGasto = await _repoRepartos.GetRepartosByGastoAsync(gasto.IDGASTO);
+
+                foreach (var reparto in repartosDelGasto)
+                {
+                    var deudor = balances.FirstOrDefault(b => b.IdParticipante == reparto.IdParticipante);
+                    if (deudor != null)
+                    {
+                        // Se lo restamos, porque es dinero que él "consumió"
+                        deudor.Debe -= reparto.Cantidad;
+                    }
+                }
+            }
+
+            // Redondeamos todo a 2 decimales para que se vea limpio
+            foreach (var b in balances)
+            {
+                b.Debe = Math.Round(b.Debe, 2);
+            }
+
+            // Ordenamos: primero los que tienen saldo positivo (les deben dinero), luego los que deben
             return balances.OrderByDescending(b => b.Debe).ToList();
         }
 
-        // 2. FUNCIONALIDAD RULETA RANDOM 
         public async Task<Participante> ElegirPagadorAlAzar(int idActividad)
         {
-            Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
+            // Mantenemos la lógica de la ruleta igual
+            List<Participante> participantes = await _repoParticipantes.GetByActividadIdAsync(idActividad);
+            if (participantes == null || !participantes.Any()) return null;
 
-            if (actividad == null || actividad.Participantes == null || !actividad.Participantes.Any())
-                return null;
-
-            // Creamos un random y elegimos un índice de la lista de participantes
             Random rnd = new Random();
-            int indexMalaSuerte = rnd.Next(actividad.Participantes.Count);
-
-            return actividad.Participantes.ElementAt(indexMalaSuerte);
+            int index = rnd.Next(participantes.Count);
+            return participantes[index];
         }
     }
 }

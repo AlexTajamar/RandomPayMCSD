@@ -11,6 +11,8 @@ namespace RandomPayMCSD.Data
         public DbSet<Actividad> Actividades { get; set; }
         public DbSet<Participante> Participantes { get; set; }
         public DbSet<Gasto> Gastos { get; set; }
+        public DbSet<Divisa> Divisas { get; set; }
+        public DbSet<RepartoGasto> RepartosGasto { get; set; }
     }
     
 

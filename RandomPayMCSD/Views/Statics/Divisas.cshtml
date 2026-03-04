@@ -1,89 +1,173 @@
-﻿@{
+﻿@model List<RandomPayMCSD.Models.Divisa>
+@{
     ViewData["Title"] = "DivisaChange Pro";
     double resultado = ViewBag.Resultado ?? 0;
-    var tasas = ViewBag.Tasas as Dictionary<string, double>;
 }
 
 <style>
-    .convert-card {
+    /* Contenedor principal con fondo suave */
+    .converter-body {
+        background-color: #f8fafc;
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    /* Tarjeta estilo Neumorfismo suave */
+    .glass-card {
         background: white;
-        border-radius: 24px;
-        padding: 2.5rem;
-        max-width: 550px;
-        margin: 40px auto;
-        border-top: 8px solid #10b981;
-        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
-    }
-
-    .btn-convert {
-        background: linear-gradient(145deg, #10b981, #059669);
-        color: white;
-        border-radius: 15px;
-        padding: 0.8rem;
-        font-weight: bold;
-        border: none;
+        border-radius: 30px;
+        padding: 40px;
         width: 100%;
+        max-width: 550px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
     }
 
-    .result-box {
-        background: #ecfdf5;
-        border: 2px dashed #10b981;
+    /* Cabecera con icono circular */
+    .icon-header {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Estilo de los Inputs y Selects */
+    .form-label {
+        font-weight: 700;
+        color: #334155;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .custom-input {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+        background-color: #fcfcfd;
+    }
+
+        .custom-input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+            background-color: white;
+        }
+
+    /* Botón de acción principal */
+    .btn-convert-master {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
         border-radius: 15px;
-        padding: 1.5rem;
-        margin-top: 2rem;
+        padding: 15px;
+        width: 100%;
+        font-weight: 800;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s;
+        margin-top: 10px;
+    }
+
+        .btn-convert-master:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 20px -5px rgba(16, 185, 129, 0.4);
+            filter: brightness(1.1);
+        }
+
+    /* Caja de Resultado Impactante */
+    .result-display {
+        background-color: #ecfdf5;
+        border-radius: 20px;
+        padding: 25px;
+        margin-top: 30px;
+        border: 2px solid #10b981;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .result-val {
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #065f46;
+        margin: 0;
+    }
+
+    .currency-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #059669;
     }
 </style>
 
-<div class="container">
-    <div class="convert-card text-center">
-        <i class="fa-solid fa-coins fa-3x mb-3" style="color: #10b981;"></i>
-        <h2 class="fw-bold mb-4" style="color: #065f46;">DivisaChange</h2>
+<div class="converter-body">
+    <div class="glass-card text-center">
+        <div class="icon-header">
+            <i class="fa-solid fa-money-bill-transfer fa-2x text-white"></i>
+        </div>
+
+        <h2 class="fw-bold text-dark mb-1">DivisaChange</h2>
+        <p class="text-muted mb-4 small">Conversión de divisas en tiempo real</p>
 
         <form asp-action="Divisas" method="post">
             <div class="mb-4 text-start">
-                <label class="form-label fw-bold">Cantidad</label>
-                <input type="number" name="importe" step="0.01" class="form-control form-control-lg rounded-3"
-                       placeholder="0.00" value="@ViewBag.Importe" required>
-            </div>
-
-            <div class="row g-3 mb-4">
-                <div class="col-6 text-start">
-                    <label class="form-label small fw-bold">De:</label>
-                    <select name="origen" class="form-select rounded-3">
-                        @foreach (var moneda in tasas.Keys)
-                        {
-                            <option value="@moneda" selected="@(moneda == ViewBag.Origen)">@moneda</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-6 text-start">
-                    <label class="form-label small fw-bold">A:</label>
-                    <select name="destino" class="form-select rounded-3">
-                        @foreach (var moneda in tasas.Keys)
-                        {
-                            <option value="@moneda" selected="@(moneda == ViewBag.Destino)">@moneda</option>
-                        }
-                    </select>
+                <label class="form-label">CANTIDAD A CONVERTIR</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border: 2px solid #e2e8f0;">
+                        <i class="fa-solid fa-coins text-success"></i>
+                    </span>
+                    <input type="number" name="importe" step="0.01" class="form-control custom-input border-start-0"
+                           style="border-radius: 0 12px 12px 0;" placeholder="0.00" value="@ViewBag.Importe" required>
                 </div>
             </div>
 
-            <button type="submit" class="btn-convert">
-                <i class="fa-solid fa-money-bill-transfer me-2"></i>Calcular Conversión
+            <div class="row g-3 mb-4 text-start">
+                <div class="col-6">
+                    <label class="form-label">DE:</label>
+                    <select name="origen" class="form-select custom-input">
+                        @foreach (var d in Model)
+                        {
+                            <option value="@d.Codigo" selected="@(d.Codigo == ViewBag.Origen)">@d.Codigo</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">A:</label>
+                    <select name="destino" class="form-select custom-input">
+                        @foreach (var d in Model)
+                        {
+                            <option value="@d.Codigo" selected="@(d.Codigo == ViewBag.Destino)">@d.Codigo</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-convert-master">
+                Convertir Dinero <i class="fa-solid fa-chevron-right ms-2 small"></i>
             </button>
         </form>
 
         @if (resultado > 0)
         {
-            <div class="result-box animate__animated animate__zoomIn">
-                <p class="text-muted mb-1 small fw-bold">RESULTADO</p>
-                <h2 class="fw-bold text-success mb-0">@resultado @ViewBag.Destino</h2>
-                <p class="small text-muted mt-2 mb-0">Calculado a tasa de mercado actual.</p>
+            <div class="result-display animate__animated animate__backInUp">
+                <p class="text-uppercase small fw-bold text-muted mb-1">Tienes aproximadamente:</p>
+                <h3 class="result-val">@resultado.ToString("N2")</h3>
+                <span class="currency-label">@ViewBag.Destino</span>
             </div>
         }
 
-        <div class="mt-4">
-            <a asp-action="Index" class="text-decoration-none text-muted small">
-                <i class="fa-solid fa-house me-1"></i> Volver al Dashboard
+        <div class="mt-4 pt-3">
+            <a asp-action="Index" class="text-decoration-none text-muted small fw-bold">
+                <i class="fa-solid fa-arrow-left me-1"></i> VOLVER AL PANEL
             </a>
         </div>
     </div>

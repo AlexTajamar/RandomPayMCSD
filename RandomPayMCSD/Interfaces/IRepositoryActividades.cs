@@ -11,5 +11,6 @@ namespace RandomPayMCSD.Repositories.Interfaces
         Task AddAsync(Actividad actividad);
         Task UpdateAsync(Actividad actividad);
         Task DeleteAsync(int id);
+        Task<Actividad> GetByCodigoAsync(string codigo);
     }
 }

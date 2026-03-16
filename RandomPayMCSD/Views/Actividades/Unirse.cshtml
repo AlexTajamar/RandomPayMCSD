@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Unirse con Código";
+}
+<div class="container mt-5 d-flex justify-content-center">
+    <div class="bg-white p-5 rounded-4 shadow-sm border text-center" style="max-width: 450px; width: 100%;">
+        <div class="p-3 bg-warning bg-opacity-10 text-warning rounded-circle d-inline-block mb-4">
+            <i class="fa-solid fa-key fa-3x"></i>
+        </div>
+        <h3 class="fw-bold text-dark mb-2">Unirse a una actividad</h3>
+        <p class="text-muted mb-4">Pídele al creador de la actividad que te pase el código secreto de 8 letras.</p>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger fw-bold rounded-3">@ViewBag.Error</div>
+        }
+
+        <form asp-action="Unirse" method="post">
+            <input type="text" name="codigo" class="form-control form-control-lg text-center fw-bold text-uppercase mb-4" placeholder="EJ: CUMPLE26" style="letter-spacing: 2px;" required autofocus autocomplete="off">
+            <button type="submit" class="btn btn-warning w-100 py-3 fw-bold rounded-3 fs-5 text-dark">Buscar actividad</button>
+            <a asp-controller="Statics" asp-action="Index" class="btn btn-light border w-100 py-2 mt-2 fw-bold rounded-3">Cancelar</a>
+        </form>
+    </div>
+</div>

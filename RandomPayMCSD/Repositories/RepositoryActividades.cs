@@ -16,82 +16,67 @@ namespace RandomPayMCSD.Repositories
 
         public async Task<List<Actividad>> GetByUsuarioIdAsync(int usuarioId)
         {
-            var consulta = from datos in this._context.Actividades
-                           where datos.Participantes.Any(p => p.IDUSUARIO == usuarioId)
-                           select datos;
+            return await _context.Actividades
+                .Where(a => a.Participantes.Any(p => p.IDUSUARIO == usuarioId))
+                .ToListAsync();
+        }
 
-            return await consulta.ToListAsync();
+        public async Task<Actividad> GetByCodigoAsync(string codigo)
+        {
+            string codigoLimpio = codigo.Trim().ToUpper();
+            return await _context.Actividades
+                .Include(a => a.Participantes)
+                .FirstOrDefaultAsync(x => x.INVITACIONCOD == codigoLimpio);
         }
 
         public async Task<Actividad?> GetByIdWithDetailsAsync(int id)
         {
-            // Para traer tablas relacionadas usamos .Include() dentro del contexto antes del from
-            var consulta = from datos in this._context.Actividades
-                                  .Include(a => a.Participantes)
-                                  .Include(a => a.Gastos)
-                                  .ThenInclude(g => g.Pagador)
-                           where datos.IDACTIVIDAD == id
-                           select datos;
-
-            return await consulta.FirstOrDefaultAsync();
+            return await _context.Actividades
+                .Include(a => a.Participantes)
+                .Include(a => a.Gastos)
+                    .ThenInclude(g => g.Pagador)
+                .Include(a => a.Gastos)
+                    .ThenInclude(g => g.Repartos) // Ahora esto ya no dará error
+                .FirstOrDefaultAsync(a => a.IDACTIVIDAD == id);
         }
 
         public async Task<Actividad?> GetByCodigoInvitacionAsync(string codigo)
         {
-            var consulta = from datos in this._context.Actividades
-                           where datos.INVITACIONCOD == codigo
-                           select datos;
-
-            return await consulta.FirstOrDefaultAsync();
+            return await _context.Actividades
+                .FirstOrDefaultAsync(x => x.INVITACIONCOD == codigo);
         }
 
         public async Task<bool> ExisteCodigoAsync(string codigo)
         {
-            var consulta = from datos in this._context.Actividades
-                           where datos.INVITACIONCOD == codigo
-                           select datos;
-
-            return await consulta.AnyAsync();
+            return await _context.Actividades
+                .AnyAsync(x => x.INVITACIONCOD == codigo);
         }
 
         public async Task AddAsync(Actividad actividad)
         {
-            var consulta = from datos in this._context.Actividades select datos.IDACTIVIDAD;
+            var maxId = await _context.Actividades.AnyAsync()
+                ? await _context.Actividades.MaxAsync(a => a.IDACTIVIDAD)
+                : 0;
+            actividad.IDACTIVIDAD = maxId + 1;
 
-            if (await consulta.AnyAsync())
-            {
-                actividad.IDACTIVIDAD = await consulta.MaxAsync() + 1;
-            }
-            else
-            {
-                actividad.IDACTIVIDAD = 1;
-            }
-
-            await this._context.Actividades.AddAsync(actividad);
-            await this._context.SaveChangesAsync();
+            await _context.Actividades.AddAsync(actividad);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Actividad actividad)
         {
-            this._context.Actividades.Update(actividad);
-            await this._context.SaveChangesAsync();
+            _context.Actividades.Update(actividad);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var consulta = from datos in this._context.Actividades
-                           where datos.IDACTIVIDAD == id
-                           select datos;
-
-            Actividad actividad = await consulta.FirstOrDefaultAsync();
-
+            var actividad = await _context.Actividades.FindAsync(id);
             if (actividad != null)
             {
-                this._context.Actividades.Remove(actividad);
-                await this._context.SaveChangesAsync();
+                _context.Actividades.Remove(actividad);
+                await _context.SaveChangesAsync();
             }
-
         }
-        
     }
 }

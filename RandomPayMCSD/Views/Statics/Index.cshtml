@@ -1,163 +1,207 @@
-﻿@using RandomPayMCSD.Models
-@using RandomPayMCSD.Extensions
-@model List<Actividad>
+﻿@model List<RandomPayMCSD.Models.Actividad>
 @{
-    Usuario user = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+    ViewData["Title"] = "Inicio";
+    var user = Context.Session.getObject<RandomPayMCSD.Models.Usuario>("USUARIO_LOGUEADO");
 }
 
 <style>
-    /* Estilos modernos */
-    .welcome-card {
-        background: white;
-        border-radius: 24px;
-        padding: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border-left: 8px solid #2563eb;
+    .welcome-section {
+        padding: 1.5rem 0;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid #e2e8f0;
     }
 
-    .btn-brand-action {
-        background: linear-gradient(145deg, #2563eb, #1d4ed8);
-        color: white;
-        border-radius: 16px;
-        padding: 1.75rem;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transition: all 0.3s;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        height: 100%;
+    /* Diseño mejorado de las Action Cards */
+    .action-card {
+        border: none;
+        border-radius: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-decoration: none;
-    }
-
-        .btn-brand-action:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px rgba(0,0,0,0.15);
-            color: white; /* Para que el texto no cambie de color al pasar el ratón */
-        }
-
-        .btn-brand-action i {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-    .activity-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
+        color: white;
         padding: 1.25rem;
         display: flex;
+        flex-direction: column; /* Icono arriba, texto abajo */
         align-items: center;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.2s;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        justify-content: center;
+        gap: 10px;
+        text-align: center;
+        height: 100%;
     }
 
-        .activity-card:hover {
-            border-color: #2563eb;
-            transform: scale(1.02);
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        .action-card:hover {
+            transform: translateY(-5px);
+            color: white;
+            box-shadow: 0 12px 20px rgba(0,0,0,0.15);
         }
 
-    .activity-icon {
-        width: 56px;
-        height: 56px;
-        background: #eff6ff;
-        border-radius: 18px;
+    /* Circulo para el icono dentro del botón */
+    .icon-circle {
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #2563eb;
-        font-size: 1.8rem;
-        margin-right: 1rem;
+        font-size: 1.4rem;
     }
 
-    .badge-soft-primary {
-        background: #dbeafe;
-        color: #1d4ed8;
-        padding: 0.4rem 1rem;
-        border-radius: 30px;
-        font-size: 0.85rem;
+    .bg-blue {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
     }
+
+    .bg-purple {
+        background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+    }
+
+    .bg-green {
+        background: linear-gradient(135deg, #10b981, #14b8a6);
+    }
+
+    .bg-orange {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .activity-card {
+        background: white;
+        border: 1px solid #f1f5f9;
+        border-radius: 18px;
+        padding: 1.25rem;
+        transition: all 0.2s;
+        position: relative;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+        .activity-card:hover {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            border-color: #e2e8f0;
+        }
+
+    .activity-link {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    /* Botón mejorado para Abandonar Actividad */
+    .btn-delete-act {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        transition: all 0.2s;
+        z-index: 10;
+        font-size: 0.75rem;
+    }
+
+        .btn-delete-act:hover {
+            background: #fee2e2;
+            color: #ef4444;
+        }
 </style>
 
-@if (user != null)
-{
-    <div class="container mt-5 mb-5">
-        <div class="welcome-card mb-5">
-            <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-soft-primary p-3 me-4" style="width: 70px; height: 70px;">
-                    <i class="fa-solid fa-hand-holding-dollar fa-2x" style="color: #2563eb;"></i>
-                </div>
-                <div>
-                    <h1 style="color: #2563eb; font-weight: 800;">¡Bienvenido, @user.NOMBRE!</h1>
-                    <p class="fs-5 text-muted mb-0">Tu rol: <span class="badge-soft-primary ms-2">@user.ROL</span></p>
-                </div>
-            </div>
-        </div>
+<div class="container mt-3 mb-5 max-w-6xl">
 
-        <h4 class="mb-4 fw-bold text-secondary">¿Qué quieres hacer hoy?</h4>
-        <div class="row g-4 mb-5">
-            <div class="col-md-4">
-                <a asp-controller="Actividades" asp-action="Crear" class="btn-brand-action">
-                    <i class="fa-solid fa-list-check"></i>
-                    <span>Nueva ListPay</span>
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a asp-controller="Statics" asp-action="RandomPay" class="btn-brand-action" style="background: linear-gradient(145deg, #8b5cf6, #6d28d9);">
-                    <i class="fa-solid fa-dice"></i>
-                    <span>Nuevo RandomPay</span>
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a asp-controller="Statics" asp-action="Divisas" class="btn-brand-action" style="background: linear-gradient(145deg, #10b981, #059669);">
-                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
-                    <span>DivisaChange</span>
-                </a>
-            </div>
+    <div class="welcome-section d-flex justify-content-between align-items-end">
+        <div>
+            <span class="text-muted fw-bold small text-uppercase"><i class="fa-solid fa-house me-1"></i> Panel Principal</span>
+            <h3 class="fw-bold mb-0 text-dark mt-1">¡Hola, @user?.NOMBRE! 👋</h3>
         </div>
+        <span class="badge bg-light text-primary border px-3 py-2 rounded-pill fw-bold">ROL: @user?.ROL</span>
+    </div>
 
-        <h4 class="mb-4 fw-bold text-secondary">Mis ListPays</h4>
-        <div class="row g-3">
-            @if (Model != null && Model.Any())
+    <h6 class="fw-bold text-dark mb-3">¿Qué quieres hacer hoy?</h6>
+
+    <div class="row row-cols-2 row-cols-md-4 g-3 mb-5">
+        <div class="col">
+            <a asp-controller="Actividades" asp-action="Crear" class="action-card bg-blue shadow-sm">
+                <div class="icon-circle"><i class="fa-solid fa-plus"></i></div>
+                <div class="fw-bold small">Nueva ListPay</div>
+            </a>
+        </div>
+        <div class="col">
+            <a asp-controller="Actividades" asp-action="Unirse" class="action-card bg-orange shadow-sm">
+                <div class="icon-circle"><i class="fa-solid fa-key"></i></div>
+                <div class="fw-bold small">Unirse con Código</div>
+            </a>
+        </div>
+        <div class="col">
+            <a asp-controller="Statics" asp-action="RandomPay" class="action-card bg-purple shadow-sm">
+                <div class="icon-circle"><i class="fa-solid fa-dice"></i></div>
+                <div class="fw-bold small">Nuevo RandomPay</div>
+            </a>
+        </div>
+        <div class="col">
+            <a asp-controller="Statics" asp-action="Divisas" class="action-card bg-green shadow-sm">
+                <div class="icon-circle"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                <div class="fw-bold small">DivisaChange</div>
+            </a>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold text-dark mb-0">Mis ListPays</h5>
+        <span class="badge bg-light text-dark border">@Model?.Count() Actividades</span>
+    </div>
+
+    <div class="row g-4">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var actividad in Model)
             {
-                @foreach (var actividad in Model)
-                {
-                    <div class="col-md-6 col-lg-4">
-                        <a asp-controller="Actividades" asp-action="Detalle" asp-route-id="@actividad.IDACTIVIDAD" class="activity-card">
-                            <div class="activity-icon">
-                                <i class="fa-solid fa-receipt"></i>
+                <div class="col-md-6 col-lg-4">
+                    <div class="activity-card h-100">
+
+                        <form asp-controller="Actividades" asp-action="AbandonarActividad" method="post"
+                              onsubmit="return confirm('¿Quieres quitar esta actividad de tu panel? Podrás volver a entrar con el código.');">
+                            <input type="hidden" name="idActividad" value="@actividad.IDACTIVIDAD" />
+                            <button type="submit" class="btn-delete-act" title="Quitar de mi lista">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </form>
+
+                        <a asp-controller="Actividades" asp-action="Detalle" asp-route-id="@actividad.IDACTIVIDAD" class="activity-link">
+                            <div class="d-flex align-items-center">
+                                @if (!string.IsNullOrEmpty(actividad.IMAGEN) && actividad.IMAGEN.StartsWith("/"))
+                                {
+                                    <img src="@actividad.IMAGEN" class="rounded-circle me-3 shadow-sm" style="width: 52px; height: 52px; object-fit: cover; border: 2px solid #f8fafc;" alt="Portada">
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle me-3 fs-4" style="width: 52px; height: 52px;">
+                                        @(string.IsNullOrEmpty(actividad.IMAGEN) ? "✈️" : actividad.IMAGEN)
+                                    </div>
+                                }
+
+                                <div class="overflow-hidden">
+                                    <h6 class="fw-bold mb-0 text-dark text-truncate">@actividad.NOMBREACTIVIDAD</h6>
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.7rem;">@actividad.MONEDAPRINCIPAL</span>
+                                        <span class="text-primary x-small fw-bold" style="font-size: 0.75rem;">Ver detalles <i class="fa-solid fa-chevron-right ms-1"></i></span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex-grow-1">
-                                <h6 class="fw-bold mb-1">@actividad.NOMBREACTIVIDAD</h6>
-                                <small class="text-muted"><i class="fa-regular fa-money-bill-1 me-1"></i>@actividad.MONEDAPRINCIPAL</small>
-                            </div>
-                            <i class="fa-solid fa-chevron-right text-muted"></i>
                         </a>
                     </div>
-                }
-            }
-            else
-            {
-                <div class="col-12">
-                    <div class="alert alert-light border text-center p-5 rounded-4">
-                        <i class="fa-regular fa-face-smile fs-1 text-muted mb-3"></i>
-                        <p class="mb-0 text-muted fs-5">Aún no participas en ninguna actividad.</p>
-                        <a asp-controller="Actividades" asp-action="Crear" class="btn btn-outline-primary rounded-pill mt-3 px-4" style="border-color: #2563eb; color: #2563eb;">Crear primera actividad</a>
-                    </div>
                 </div>
             }
-        </div>
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="text-center py-5 bg-light rounded-4 border border-dashed">
+                    <i class="fa-solid fa-folder-open fa-3x text-muted mb-3 opacity-25"></i>
+                    <h6 class="fw-bold text-dark">No tienes ninguna actividad</h6>
+                    <p class="text-muted mb-0 small">Crea una nueva ListPay o únete a una existente.</p>
+                </div>
+            </div>
+        }
     </div>
-}
-else
-{
-    <div class="container mt-5 text-center">
-        <div class="p-5 bg-white rounded-4 shadow-sm">
-            <h2 class="text-danger mb-4"><i class="fa-solid fa-lock me-2"></i>No has iniciado sesión</h2>
-            <a asp-controller="RandomLogIn" asp-action="Index" class="btn btn-primary rounded-pill px-5 py-3" style="background: #2563eb;">Ir al Login</a>
-        </div>
-    </div>
-}
+</div>

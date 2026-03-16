@@ -1,49 +1,140 @@
 ﻿@{
-    ViewData["Title"] = "Nueva actividad";
+    ViewData["Title"] = "Crear nueva actividad";
 }
 
 <style>
-    .form-card {
+    .clean-card {
         background: white;
-        border-radius: 24px;
-        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
-        padding: 2rem;
-        max-width: 550px;
-        margin: 0 auto;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
     }
 
-    .btn-primary-custom {
-        background: #2563eb;
-        color: white;
-        border-radius: 40px;
-        padding: 0.8rem 2rem;
+    .custom-input {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+        .custom-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
+        }
+
+    /* Botón punteado para añadir amigos */
+    .btn-dashed {
+        border: 2px dashed #cbd5e1;
+        color: #64748b;
+        background: transparent;
+        border-radius: 12px;
+        padding: 0.8rem;
         font-weight: 600;
-        border: none;
-        width: 100%;
+        transition: all 0.2s;
     }
 
-        .btn-primary-custom:hover {
-            background: #1d4ed8;
+        .btn-dashed:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #f8fafc;
         }
 </style>
 
-<div class="container mt-5">
-    <div class="form-card">
-        <h2 class="fw-bold mb-4" style="color: #2563eb;">Crear nueva actividad</h2>
-        <form method="post">
+<div class="container mt-5 mb-5 d-flex justify-content-center">
+    <div class="clean-card w-100" style="max-width: 500px;">
+        <h3 class="fw-bold mb-4 text-primary text-center">Crear nueva actividad</h3>
+
+        <form asp-action="Crear" method="post" enctype="multipart/form-data">
             <div class="mb-4">
-                <label class="form-label fw-semibold">Nombre de la actividad</label>
-                <input type="text" name="nombre" class="form-control form-control-lg rounded-4" placeholder="Ej: Viaje a Madrid" required />
+                <label class="form-label fw-bold text-dark small">NOMBRE DE LA ACTIVIDAD</label>
+                <input type="text" name="nombre" class="form-control custom-input" placeholder="Ej: Viaje a Madrid" required autocomplete="off">
             </div>
+
             <div class="mb-4">
-                <label class="form-label fw-semibold">Moneda principal</label>
-                <select name="moneda" class="form-select form-select-lg rounded-4">
+                <label class="form-label fw-bold text-dark small">MONEDA PRINCIPAL</label>
+                <select name="moneda" class="form-select custom-input">
                     <option value="EUR">EUR (€)</option>
                     <option value="USD">USD ($)</option>
                     <option value="GBP">GBP (£)</option>
+                    <option value="JPY">JPY (¥)</option>
                 </select>
             </div>
-            <button type="submit" class="btn-primary-custom">Crear actividad</button>
+
+            <div class="mb-4 p-3 bg-light rounded-4 border">
+                <label class="form-label fw-bold text-dark small"><i class="fa-solid fa-image me-2"></i>PORTADA (Opcional)</label>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Sube una foto:</label>
+                    <input type="file" name="imagenForm" class="form-control custom-input" accept="image/*">
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">O pon un Emoji:</span>
+                    <input type="text" name="emojiForm" class="form-control custom-input text-center fs-4 p-1" style="width: 60px; height: 45px;" placeholder="✈️" maxlength="5">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold text-dark small">PARTICIPANTES (Opcional)</label>
+
+                <div id="listaAmigos" class="d-flex flex-column gap-2 mb-3">
+                    <div class="d-flex align-items-center bg-light border rounded-3 px-3 py-2 text-muted fw-semibold">
+                        <i class="fa-solid fa-user-check me-2 text-success"></i> Tú (Creador)
+                    </div>
+
+                    <div class="d-flex gap-2 amigo-row">
+                        <input type="text" name="nombresAmigos" class="form-control custom-input" placeholder="Nombre del amigo..." autocomplete="off">
+                    </div>
+                </div>
+
+                <button type="button" id="btnAddAmigo" class="btn btn-dashed w-100">
+                    <i class="fa-solid fa-plus me-2"></i> Añadir otro amigo
+                </button>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm mt-3" style="border-radius: 12px; font-size: 1.1rem;">
+                Crear actividad
+            </button>
         </form>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('btnAddAmigo').addEventListener('click', function() {
+            const lista = document.getElementById('listaAmigos');
+
+            // Creamos el contenedor de la fila
+            const div = document.createElement('div');
+            div.className = 'd-flex gap-2 amigo-row mt-2';
+
+            // Creamos la caja de texto
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'nombresAmigos';
+            input.className = 'form-control custom-input';
+            input.placeholder = 'Nombre del amigo...';
+            input.autocomplete = 'off';
+
+            // Creamos el botón rojo para borrar esa línea si te arrepientes
+            const btnRemove = document.createElement('button');
+            btnRemove.type = 'button';
+            btnRemove.className = 'btn btn-light border text-danger';
+            btnRemove.style.borderRadius = '12px';
+            btnRemove.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            btnRemove.onclick = function() {
+                div.remove();
+            };
+
+            // Lo juntamos todo y lo inyectamos en la pantalla
+            div.appendChild(input);
+            div.appendChild(btnRemove);
+            lista.appendChild(div);
+
+            // Hacemos que el cursor vaya directo a la nueva caja
+            input.focus();
+        });
+    </script>
+}

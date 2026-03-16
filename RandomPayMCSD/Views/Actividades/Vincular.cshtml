@@ -1,0 +1,54 @@
+﻿@model RandomPayMCSD.Models.Actividad
+@using RandomPayMCSD.Extensions
+@using RandomPayMCSD.Models
+@{
+    ViewData["Title"] = "¿Quién eres?";
+    // Recuperamos el usuario de la sesión para que @user.NOMBRE funcione
+    var user = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+}
+
+<div class="container mt-5 d-flex justify-content-center">
+    <div class="bg-white p-5 rounded-4 shadow-sm border text-center" style="max-width: 500px; width: 100%;">
+        <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-circle d-inline-block mb-3">
+            <i class="fa-solid fa-magnifying-glass-location fa-2x"></i>
+        </div>
+        <h3 class="fw-bold text-dark mb-1">¡Actividad encontrada!</h3>
+        <h5 class="text-primary fw-bold mb-4">@Model.NOMBREACTIVIDAD</h5>
+
+        <p class="text-muted mb-4">¿Ya te habían añadido con un nombre temporal? Selecciónalo aquí:</p>
+
+        <form asp-action="Vincular" method="post">
+            <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+            <div class="d-flex flex-column gap-2 mb-4">
+                @if (ViewBag.Huerfanos != null && ((List<Participante>)ViewBag.Huerfanos).Any())
+                {
+                    foreach (var p in (List<Participante>)ViewBag.Huerfanos)
+                    {
+                        <button type="submit" name="idParticipante" value="@p.IDPARTICIPANTE" class="btn btn-outline-primary py-3 fw-bold rounded-3 text-start px-4">
+                            <i class="fa-regular fa-circle-user me-2"></i> Soy @p.NOMBREPARTICIPANTE
+                        </button>
+                    }
+                }
+                else
+                {
+                    <div class="alert alert-light border small text-muted">No hay nombres pendientes de vincular.</div>
+                }
+            </div>
+        </form>
+
+        <div class="hr-text text-muted mb-4" style="display: flex; align-items: center; text-align: center;">
+            <span style="flex: 1; height: 1px; background: #eee;"></span>
+            <span style="padding: 0 10px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">O si no apareces</span>
+            <span style="flex: 1; height: 1px; background: #eee;"></span>
+        </div>
+
+        <form asp-action="VincularNuevo" method="post">
+            <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+            <button type="submit" class="btn btn-dark w-100 py-3 fw-bold rounded-3 mb-3">
+                <i class="fa-solid fa-user-plus me-2"></i> Unirme como @user?.NOMBRE
+            </button>
+        </form>
+
+        <a asp-controller="Statics" asp-action="Index" class="text-muted text-decoration-none fw-bold small">Cancelar y volver</a>
+    </div>
+</div>

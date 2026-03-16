@@ -195,6 +195,20 @@
 
         let manualEdits = new Set();
 
+        // NUEVO: Función para atenuar y bloquear al usuario desmarcado
+        function actualizarEstadoFila(index, isChecked) {
+            const row = montos[index].closest('.participant-row');
+            if (isChecked) {
+                row.style.opacity = '1';
+                montos[index].readOnly = false;
+            } else {
+                row.style.opacity = '0.5'; // Lo ponemos semitransparente
+                montos[index].readOnly = true; // Bloqueamos la escritura
+                montos[index].value = "0.00"; // Forzamos el cero
+                montos[index].classList.remove('manual-edit');
+            }
+        }
+
         function actualizarDivisas() {
             const moneda = divisaSelect.value;
             labelsMoneda.forEach(l => l.innerText = moneda);
@@ -216,15 +230,13 @@
             let autoIndexes = [];
 
             checks.forEach((check, index) => {
+                actualizarEstadoFila(index, check.checked);
                 if (check.checked) {
                     if (manualEdits.has(index)) {
                         sumManual += parseFloat(montos[index].value) || 0;
                     } else {
                         autoIndexes.push(index);
                     }
-                } else {
-                    montos[index].value = "0.00";
-                    montos[index].classList.remove('manual-edit');
                 }
             });
 
@@ -235,6 +247,28 @@
                 autoIndexes.forEach(idx => {
                     montos[idx].value = porPersona.toFixed(2);
                     montos[idx].classList.remove('manual-edit');
+                });
+            }
+        }
+
+        function repartirEquitativamente() {
+            manualEdits.clear();
+            const total = parseFloat(totalInput.value) || 0;
+            const activos = Array.from(checks).filter(c => c.checked);
+
+            if (activos.length > 0) {
+                const porPersona = total / activos.length;
+                checks.forEach((check, index) => {
+                    actualizarEstadoFila(index, check.checked);
+                    if (check.checked) {
+                        montos[index].value = porPersona.toFixed(2);
+                        montos[index].classList.remove('manual-edit');
+                    }
+                });
+            } else {
+                // Si desmarca a todo el mundo, todos a cero
+                checks.forEach((check, index) => {
+                    actualizarEstadoFila(index, false);
                 });
             }
         }
@@ -259,35 +293,32 @@
 
         checks.forEach((check, index) => {
             check.addEventListener('change', () => {
-                manualEdits.delete(index);
+                if (!check.checked) {
+                    manualEdits.delete(index); // Si lo desmarca, olvidamos su edición manual
+                }
+
                 if(manualEdits.size === 0) repartirEquitativamente();
                 else recalcularSobrante();
             });
         });
 
-        function repartirEquitativamente() {
-            manualEdits.clear();
-            const total = parseFloat(totalInput.value) || 0;
-            const activos = Array.from(checks).filter(c => c.checked);
+        btnEqual.addEventListener('click', () => {
+            // Al dar al botón de resetear, marcamos a todos por defecto
+            checks.forEach(c => c.checked = true);
+            repartirEquitativamente();
+        });
 
-            if (activos.length > 0) {
-                const porPersona = total / activos.length;
-                checks.forEach((check, index) => {
-                    if (check.checked) {
-                        montos[index].value = porPersona.toFixed(2);
-                        montos[index].classList.remove('manual-edit');
-                    }
-                });
-            }
-        }
-
-        btnEqual.addEventListener('click', repartirEquitativamente);
-
+        // --- INICIALIZACIÓN AL CARGAR LA PÁGINA ---
         actualizarDivisas();
+
+        // Pinta correctamente a los que ya estuvieran desmarcados al editar
+        checks.forEach((check, index) => {
+            actualizarEstadoFila(index, check.checked);
+        });
 
         @if (!esEdicion)
         {
-                    <text>repartirEquitativamente();</text>
+                <text>repartirEquitativamente();</text>
         }
     </script>
 }

@@ -1,0 +1,62 @@
+﻿@model RandomPayMCSD.Models.Actividad
+@{
+    ViewData["Title"] = "Añadir amigo";
+}
+
+<style>
+    .clean-card {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+
+    .custom-input {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+        .custom-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
+        }
+</style>
+
+<div class="container mt-5 mb-5" style="max-width: 600px;">
+    <div class="clean-card">
+        <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+            <div class="p-3 rounded-circle bg-primary bg-opacity-10 me-3">
+                <i class="fa-solid fa-user-plus fa-2x text-primary"></i>
+            </div>
+            <div>
+                <h2 class="fw-bold mb-0 text-dark">Añadir amigo</h2>
+                <span class="text-muted small fw-semibold">a @Model.NOMBREACTIVIDAD</span>
+            </div>
+        </div>
+
+        <form asp-action="AddParticipante" method="post">
+            <input type="hidden" name="IDACTIVIDAD" value="@Model.IDACTIVIDAD" />
+
+            <div class="mb-5">
+                <label class="form-label small text-muted fw-bold">NOMBRE DEL AMIGO</label>
+                <input type="text" name="nombreParticipante" class="form-control custom-input fs-5" placeholder="Ej: Luis, Marta, Jaime..." required autocomplete="off">
+                <div class="form-text mt-2 text-muted">
+                    <i class="fa-solid fa-circle-info me-1"></i> Aparecerá en la lista de la actividad para que puedas dividir gastos con él al instante.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-3 mt-4">
+                <a asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light border py-3 px-4 fw-bold" style="border-radius: 12px;">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary py-3 px-4 fw-bold shadow-sm" style="border-radius: 12px;">
+                    Añadir al grupo <i class="fa-solid fa-check ms-2"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

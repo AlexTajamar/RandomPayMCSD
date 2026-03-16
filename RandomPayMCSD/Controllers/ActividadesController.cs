@@ -35,43 +35,62 @@ namespace RandomPayMCSD.Controllers
             _repoDivisas = repoDivisas;
         }
 
-        // --- 1. DETALLE DE LA ACTIVIDAD ---
+        // --- 1. DETALLE Y GESTIÓN DE ACTIVIDAD ---
+
         public async Task<IActionResult> Detalle(int id)
         {
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
             if (actividad == null) return RedirectToAction("Index", "Statics");
 
-            // Calculamos quién debe a quién
             ViewBag.Balances = await _balanceService.GetBalancesActividadAsync(id);
+            ViewBag.Transferencias = await _balanceService.GetTransferenciasAsync(id);
 
             return View(actividad);
         }
 
-        // --- 2. CREAR ACTIVIDAD ---
         public IActionResult Crear()
         {
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Crear(string nombre, string moneda)
+        public async Task<IActionResult> Crear(string nombre, string moneda, List<string> nombresAmigos, IFormFile imagenForm, string emojiForm)
         {
             Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
             if (user == null) return RedirectToAction("Index", "RandomLogIn");
 
-            // Creamos la actividad
+            string imagenFinal = "✈️";
+
+            if (imagenForm != null && imagenForm.Length > 0)
+            {
+                string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "actividades");
+                if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+
+                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(imagenForm.FileName);
+                string filePath = Path.Combine(folderPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await imagenForm.CopyToAsync(stream);
+                }
+                imagenFinal = "/images/actividades/" + fileName;
+            }
+            else if (!string.IsNullOrWhiteSpace(emojiForm))
+            {
+                imagenFinal = emojiForm.Trim();
+            }
+
             Actividad nuevaActividad = new Actividad
             {
                 NOMBREACTIVIDAD = nombre,
                 MONEDAPRINCIPAL = moneda ?? "EUR",
                 IDCREADOR = user.IDUSUARIO,
                 FECHACREACION = DateTime.Now,
-                INVITACIONCOD = _invitationService.GenerarCodigoUnico()
+                INVITACIONCOD = _invitationService.GenerarCodigoUnico(),
+                IMAGEN = imagenFinal
             };
-
             await _repoActividades.AddAsync(nuevaActividad);
 
-            // MUY IMPORTANTE: El creador se añade automáticamente como participante
             Participante creadorParticipante = new Participante
             {
                 IDACTIVIDAD = nuevaActividad.IDACTIVIDAD,
@@ -80,41 +99,146 @@ namespace RandomPayMCSD.Controllers
             };
             await _repoParticipantes.AddAsync(creadorParticipante);
 
+            if (nombresAmigos != null)
+            {
+                foreach (var nombreAmigo in nombresAmigos.Where(n => !string.IsNullOrWhiteSpace(n)))
+                {
+                    await _repoParticipantes.AddAsync(new Participante
+                    {
+                        IDACTIVIDAD = nuevaActividad.IDACTIVIDAD,
+                        NOMBREPARTICIPANTE = nombreAmigo.Trim(),
+                        IDUSUARIO = null
+                    });
+                }
+            }
+
             return RedirectToAction("Detalle", new { id = nuevaActividad.IDACTIVIDAD });
         }
 
-        // --- 3. MOSTRAR EL FORMULARIO DE GASTO CON REPARTO (GET) ---
+        public async Task<IActionResult> AddParticipante(int id)
+        {
+            Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
+            if (actividad == null) return RedirectToAction("Index", "Statics");
+            return View(actividad);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddParticipante(int IDACTIVIDAD, string nombreParticipante)
+        {
+            if (!string.IsNullOrWhiteSpace(nombreParticipante))
+            {
+                await _repoParticipantes.AddAsync(new Participante
+                {
+                    IDACTIVIDAD = IDACTIVIDAD,
+                    NOMBREPARTICIPANTE = nombreParticipante,
+                    IDUSUARIO = null
+                });
+            }
+            return RedirectToAction("Detalle", new { id = IDACTIVIDAD });
+        }
+
+        // --- 2. GESTIÓN DE INVITACIONES Y VINCULACIÓN ---
+
+        [HttpGet]
+        public IActionResult Unirse()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Unirse(string codigo)
+        {
+            if (string.IsNullOrWhiteSpace(codigo)) return View();
+
+            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            var actividad = await _repoActividades.GetByCodigoAsync(codigo);
+
+            if (actividad == null)
+            {
+                ViewBag.Error = "No existe ninguna actividad con el código: " + codigo.ToUpper();
+                return View();
+            }
+
+            if (actividad.Participantes.Any(p => p.IDUSUARIO == user.IDUSUARIO))
+            {
+                ViewBag.Error = "Ya estás dentro de esta actividad. Búscala en tu panel de inicio.";
+                return View();
+            }
+
+            return RedirectToAction("Vincular", new { id = actividad.IDACTIVIDAD });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Vincular(int id)
+        {
+            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
+
+            if (actividad == null) return RedirectToAction("Index", "Statics");
+
+            if (actividad.Participantes.Any(p => p.IDUSUARIO == user.IDUSUARIO))
+            {
+                return RedirectToAction("Detalle", new { id = id });
+            }
+
+            ViewBag.Huerfanos = actividad.Participantes.Where(p => p.IDUSUARIO == null).ToList();
+            return View(actividad);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Vincular(int idActividad, int idParticipante)
+        {
+            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            Participante p = await _repoParticipantes.GetByIdAsync(idParticipante);
+
+            if (p != null)
+            {
+                p.IDUSUARIO = user.IDUSUARIO;
+                await _repoParticipantes.UpdateAsync(p);
+            }
+
+            return RedirectToAction("Detalle", new { id = idActividad });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> VincularNuevo(int idActividad)
+        {
+            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            if (user == null) return RedirectToAction("Index", "RandomLogIn");
+
+            await _repoParticipantes.AddAsync(new Participante
+            {
+                IDACTIVIDAD = idActividad,
+                NOMBREPARTICIPANTE = user.NOMBRE,
+                IDUSUARIO = user.IDUSUARIO
+            });
+
+            return RedirectToAction("Detalle", new { id = idActividad });
+        }
+
+        // --- 3. GASTOS Y DEUDAS ---
+
         public async Task<IActionResult> AddGasto(int id)
         {
             ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(id);
             ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
-
-            Gasto modeloGasto = new Gasto { IDACTIVIDAD = id, FECHA = DateTime.Now };
-
-            return View(modeloGasto);
+            return View(new Gasto { IDACTIVIDAD = id, FECHA = DateTime.Now });
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddGasto(
-     Gasto gastoNormal,
-     string importeString, // <--- AÑADIDO
-     string divisaSeleccionada,
-     List<int> idsParticipantes,
-     List<string> cantidadesAsignadas)
+        public async Task<IActionResult> AddGasto(Gasto gastoNormal, string importeString, string divisaSeleccionada, List<int> idsParticipantes, List<string> cantidadesAsignadas)
         {
-            // --- MAGIA PARA ARREGLAR LOS DECIMALES DEL TOTAL ---
             if (!string.IsNullOrWhiteSpace(importeString))
             {
-                string totalLimpio = importeString.Replace(",", ".");
-                if (double.TryParse(totalLimpio, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double totalParseado))
+                if (double.TryParse(importeString.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double totalParseado))
                 {
-                    gastoNormal.IMPORTE = (decimal)totalParseado;
+                    gastoNormal.IMPORTE = Math.Round((decimal)totalParseado, 2);
                 }
             }
 
             if (gastoNormal.IMPORTE <= 0)
             {
-                ModelState.AddModelError("IMPORTE", "El importe debe ser mayor que cero.");
+                ModelState.AddModelError("IMPORTE", "Importe no válido.");
                 ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(gastoNormal.IDACTIVIDAD);
                 ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
                 return View(gastoNormal);
@@ -122,54 +246,102 @@ namespace RandomPayMCSD.Controllers
 
             if (divisaSeleccionada != "EUR")
             {
-                var monedaOrigen = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
-                if (monedaOrigen != null)
-                {
-                    gastoNormal.IMPORTE = Math.Round(gastoNormal.IMPORTE / (decimal)monedaOrigen.Tasa, 2);
-                }
+                var moneda = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
+                if (moneda != null) gastoNormal.IMPORTE = Math.Round(gastoNormal.IMPORTE / (decimal)moneda.Tasa, 2);
             }
 
             gastoNormal.FECHA = DateTime.Now;
             await _repoGastos.AddAsync(gastoNormal);
 
-            if (idsParticipantes != null && cantidadesAsignadas != null)
+            if (idsParticipantes != null)
             {
                 for (int i = 0; i < idsParticipantes.Count; i++)
                 {
-                    double cuantoDebe = 0;
-                    if (i < cantidadesAsignadas.Count && !string.IsNullOrWhiteSpace(cantidadesAsignadas[i]))
+                    if (i < cantidadesAsignadas.Count && double.TryParse(cantidadesAsignadas[i].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double valor) && valor > 0)
                     {
-                        string valorLimpio = cantidadesAsignadas[i].Replace(",", ".");
-                        double.TryParse(valorLimpio, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out cuantoDebe);
-                    }
-
-                    if (cuantoDebe > 0)
-                    {
+                        double valorRedondeado = Math.Round(valor, 2);
                         if (divisaSeleccionada != "EUR")
                         {
                             var moneda = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
-                            cuantoDebe = Math.Round(cuantoDebe / moneda.Tasa, 2);
+                            valorRedondeado = Math.Round(valorRedondeado / moneda.Tasa, 2);
                         }
-
-                        RepartoGasto reparto = new RepartoGasto
-                        {
-                            IdGasto = gastoNormal.IDGASTO,
-                            IdParticipante = idsParticipantes[i],
-                            Cantidad = cuantoDebe
-                        };
-                        await _repoRepartos.AddAsync(reparto);
+                        await _repoRepartos.AddAsync(new RepartoGasto { IdGasto = gastoNormal.IDGASTO, IdParticipante = idsParticipantes[i], Cantidad = valorRedondeado });
                     }
                 }
             }
-
             return RedirectToAction("Detalle", new { id = gastoNormal.IDACTIVIDAD });
         }
-        // --- 5. LA RULETA RANDOM ---
+
+        // --- MÉTODOS DE EDICIÓN (LOS QUE FALTABAN) ---
+
+        [HttpGet]
+        public async Task<IActionResult> EditGasto(int idGasto)
+        {
+            Gasto gasto = await _repoGastos.GetByIdAsync(idGasto);
+            if (gasto == null) return RedirectToAction("Index", "Statics");
+
+            ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(gasto.IDACTIVIDAD);
+            ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
+            ViewBag.Repartos = await _repoRepartos.GetRepartosByGastoAsync(idGasto);
+
+            return View("AddGasto", gasto);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EditGasto(Gasto gastoEditado, string importeString, string divisaSeleccionada, List<int> idsParticipantes, List<string> cantidadesAsignadas)
+        {
+            if (!string.IsNullOrWhiteSpace(importeString))
+            {
+                if (double.TryParse(importeString.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double total))
+                {
+                    gastoEditado.IMPORTE = Math.Round((decimal)total, 2);
+                }
+            }
+
+            await _repoGastos.UpdateAsync(gastoEditado);
+
+            var antiguos = await _repoRepartos.GetRepartosByGastoAsync(gastoEditado.IDGASTO);
+            foreach (var r in antiguos) await _repoRepartos.DeleteAsync(r.IdReparto);
+
+            if (idsParticipantes != null)
+            {
+                for (int i = 0; i < idsParticipantes.Count; i++)
+                {
+                    if (i < cantidadesAsignadas.Count && double.TryParse(cantidadesAsignadas[i].Replace(",", "."), out double valor))
+                    {
+                        double valorRedondeado = Math.Round(valor, 2);
+                        if (valorRedondeado > 0)
+                        {
+                            await _repoRepartos.AddAsync(new RepartoGasto
+                            {
+                                IdGasto = gastoEditado.IDGASTO,
+                                IdParticipante = idsParticipantes[i],
+                                Cantidad = valorRedondeado
+                            });
+                        }
+                    }
+                }
+            }
+            return RedirectToAction("Detalle", new { id = gastoEditado.IDACTIVIDAD });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaldarDeuda(int idActividad, int idDeudor, int idAcreedor, string cantidadString)
+        {
+            if (double.TryParse(cantidadString.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double cantidad) && cantidad > 0)
+            {
+                Gasto reembolso = new Gasto { IDACTIVIDAD = idActividad, IDPAGADOR = idDeudor, CONCEPTO = "💸 Reembolso de deuda", IMPORTE = (decimal)Math.Round(cantidad, 2), FECHA = DateTime.Now };
+                await _repoGastos.AddAsync(reembolso);
+                await _repoRepartos.AddAsync(new RepartoGasto { IdGasto = reembolso.IDGASTO, IdParticipante = idAcreedor, Cantidad = Math.Round(cantidad, 2) });
+            }
+            return RedirectToAction("Detalle", new { id = idActividad });
+        }
+
+        // --- 4. OTROS MÉTODOS (Ruleta, Delete, etc.) ---
+
         public async Task<IActionResult> Ruleta(int id)
         {
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
-            if (actividad == null) return RedirectToAction("Index", "Statics");
-
             return View(actividad);
         }
 
@@ -180,117 +352,50 @@ namespace RandomPayMCSD.Controllers
             return Json(new { nombre = perdedor.NOMBREPARTICIPANTE, id = perdedor.IDPARTICIPANTE });
         }
 
-        // --- MOSTRAR EL FORMULARIO DE EDICIÓN (GET) ---
-        public async Task<IActionResult> EditGasto(int idGasto)
-        {
-            // 1. Usamos tu método exacto GetByIdAsync
-            Gasto gasto = await _repoGastos.GetByIdAsync(idGasto);
-
-            if (gasto == null) return RedirectToAction("Index", "Statics");
-
-            // 2. Cargamos las listas necesarias
-            ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(gasto.IDACTIVIDAD);
-            ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
-
-            // 3. Cargamos los repartos que ya estaban guardados
-            ViewBag.Repartos = await _repoRepartos.GetRepartosByGastoAsync(idGasto);
-
-            return View("AddGasto", gasto); // Usamos la misma vista que para añadir
-        }
         [HttpPost]
-        public async Task<IActionResult> EditGasto(
-     Gasto gastoEditado,
-     string importeString, // <--- AÑADIDO
-     string divisaSeleccionada,
-     List<int> idsParticipantes,
-     List<string> cantidadesAsignadas)
+        public async Task<IActionResult> DeleteActividad(int idActividad)
         {
-            // --- MAGIA PARA ARREGLAR LOS DECIMALES DEL TOTAL ---
-            if (!string.IsNullOrWhiteSpace(importeString))
+            var gastos = await _repoGastos.GetByActividadIdAsync(idActividad);
+            foreach (var gasto in gastos)
             {
-                string totalLimpio = importeString.Replace(",", ".");
-                if (double.TryParse(totalLimpio, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double totalParseado))
-                {
-                    gastoEditado.IMPORTE = (decimal)totalParseado;
-                }
+                var repartos = await _repoRepartos.GetRepartosByGastoAsync(gasto.IDGASTO);
+                foreach (var rep in repartos) await _repoRepartos.DeleteAsync(rep.IdReparto);
+                await _repoGastos.DeleteAsync(gasto.IDGASTO);
             }
+            var participantes = await _repoParticipantes.GetByActividadIdAsync(idActividad);
+            foreach (var p in participantes) await _repoParticipantes.DeleteAsync(p.IDPARTICIPANTE);
 
-            if (divisaSeleccionada != "EUR")
-            {
-                var monedaOrigen = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
-                if (monedaOrigen != null)
-                {
-                    gastoEditado.IMPORTE = Math.Round(gastoEditado.IMPORTE / (decimal)monedaOrigen.Tasa, 2);
-                }
-            }
-
-            if (gastoEditado.FECHA.Year == 1)
-            {
-                gastoEditado.FECHA = DateTime.Now;
-            }
-
-            await _repoGastos.UpdateAsync(gastoEditado);
-
-            var repartosAntiguos = await _repoRepartos.GetRepartosByGastoAsync(gastoEditado.IDGASTO);
-            foreach (var rep in repartosAntiguos)
-            {
-                await _repoRepartos.DeleteAsync(rep.IdReparto);
-            }
-
-            if (idsParticipantes != null && cantidadesAsignadas != null)
-            {
-                for (int i = 0; i < idsParticipantes.Count; i++)
-                {
-                    double cuantoDebe = 0;
-                    if (i < cantidadesAsignadas.Count && !string.IsNullOrWhiteSpace(cantidadesAsignadas[i]))
-                    {
-                        string valorLimpio = cantidadesAsignadas[i].Replace(",", ".");
-                        double.TryParse(valorLimpio, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out cuantoDebe);
-                    }
-
-                    if (cuantoDebe > 0)
-                    {
-                        if (divisaSeleccionada != "EUR")
-                        {
-                            var moneda = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
-                            cuantoDebe = Math.Round(cuantoDebe / moneda.Tasa, 2);
-                        }
-
-                        await _repoRepartos.AddAsync(new RepartoGasto
-                        {
-                            IdGasto = gastoEditado.IDGASTO,
-                            IdParticipante = idsParticipantes[i],
-                            Cantidad = cuantoDebe
-                        });
-                    }
-                }
-            }
-
-            return RedirectToAction("Detalle", new { id = gastoEditado.IDACTIVIDAD });
+            await _repoActividades.DeleteAsync(idActividad);
+            return RedirectToAction("Index", "Statics");
         }
 
-        // --- BORRAR GASTO (POST) ---
         [HttpPost]
         public async Task<IActionResult> DeleteGasto(int idGasto)
         {
-            // 1. Buscamos el gasto para saber a qué actividad pertenece y poder volver a ella
             Gasto gasto = await _repoGastos.GetByIdAsync(idGasto);
-
             if (gasto != null)
             {
-                // 2. PRIMERO borramos los repartos asociados a este gasto (para evitar error de Foreign Key)
-                var repartosAsociados = await _repoRepartos.GetRepartosByGastoAsync(idGasto);
-                foreach (var rep in repartosAsociados)
-                {
-                    await _repoRepartos.DeleteAsync(rep.IdReparto);
-                }
-
-                // 3. SEGUNDO borramos el gasto de la tabla principal
+                int idActividad = gasto.IDACTIVIDAD;
+                var repartos = await _repoRepartos.GetRepartosByGastoAsync(idGasto);
+                foreach (var rep in repartos) await _repoRepartos.DeleteAsync(rep.IdReparto);
                 await _repoGastos.DeleteAsync(idGasto);
-
-                return RedirectToAction("Detalle", new { id = gasto.IDACTIVIDAD });
+                return RedirectToAction("Detalle", new { id = idActividad });
             }
+            return RedirectToAction("Index", "Statics");
+        }
 
+        [HttpPost]
+        public async Task<IActionResult> AbandonarActividad(int idActividad)
+        {
+            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            var participantes = await _repoParticipantes.GetByActividadIdAsync(idActividad);
+            var miParticipante = participantes.FirstOrDefault(p => p.IDUSUARIO == user.IDUSUARIO);
+
+            if (miParticipante != null)
+            {
+                miParticipante.IDUSUARIO = null;
+                await _repoParticipantes.UpdateAsync(miParticipante);
+            }
             return RedirectToAction("Index", "Statics");
         }
     }

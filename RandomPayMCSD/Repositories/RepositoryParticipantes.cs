@@ -21,15 +21,18 @@ namespace RandomPayMCSD.Repositories
                            select datos;
             return await consulta.ToListAsync();
         }
-
-        public async Task<Participante?> GetByIdAsync(int id)
+        public async Task<Participante> GetByIdAsync(int idParticipante)
         {
-            var consulta = from datos in this._context.Participantes
-                           where datos.IDPARTICIPANTE == id
-                           select datos;
-            return await consulta.FirstOrDefaultAsync();
+            return await this._context.Participantes.FindAsync(idParticipante);
         }
 
+        public async Task UpdateAsync(Participante participante)
+        {
+            this._context.Participantes.Update(participante);
+            await this._context.SaveChangesAsync();
+        }
+
+  
         // --- AÑADE ESTE MÉTODO QUE FALTA ---
         public async Task<bool> ExisteParticipanteEnActividad(int idActividad, string nombre, int? idUsuario)
         {

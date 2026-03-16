@@ -6,10 +6,34 @@
     ViewData["Title"] = Model.NOMBREACTIVIDAD;
     var balances = ViewBag.Balances as List<RandomPayMCSD.Services.BalanceItem>;
     var currentUser = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+
+    // 1. Gasto total del grupo
+    var totalActividad = Model.Gastos?.Sum(g => g.IMPORTE) ?? 0;
+
+    // 2. Buscamos tu ID de participante
+    var miParticipanteLogueado = Model.Participantes.FirstOrDefault(p => p.IDUSUARIO == currentUser?.IDUSUARIO);
+    int miId = miParticipanteLogueado?.IDPARTICIPANTE ?? 0;
+
+    // 3. CÁLCULO GASTO REAL (Lo que tú has consumido)
+    decimal miGastoReal = 0;
+    if (Model.Gastos != null)
+    {
+        foreach (var g in Model.Gastos)
+        {
+            if (g.Repartos != null)
+            {
+                miGastoReal += (decimal)g.Repartos.Where(r => r.IdParticipante == miId).Sum(r => r.Cantidad);
+            }
+        }
+    }
+    miGastoReal = Math.Round(miGastoReal, 2);
+
+    // 4. ¿Eres el que más ha pagado físicamente?
+    var maxBalance = balances?.OrderByDescending(b => b.Debe).FirstOrDefault();
+    bool soyElMaximoGastador = maxBalance != null && maxBalance.Participante == miParticipanteLogueado?.NOMBREPARTICIPANTE && maxBalance.Debe > 0.01;
 }
 
 <style>
-    /* Estilos Premium unificados con la pantalla de Gasto */
     .bg-dashboard {
         background-color: #f8fafc;
         min-height: 100vh;
@@ -25,7 +49,6 @@
         height: 100%;
     }
 
-    /* Elementos de las listas (Gastos, Balances, Participantes) */
     .list-item-modern {
         background: #ffffff;
         border-radius: 16px;
@@ -40,13 +63,11 @@
 
         .list-item-modern:hover {
             border-color: #cbd5e1;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             transform: translateY(-2px);
         }
 
-    /* Colores para los Balances */
     .balance-positive {
-        color: #10b981; /* Verde esmeralda */
+        color: #10b981;
         font-weight: 700;
         background: #d1fae5;
         padding: 6px 12px;
@@ -54,31 +75,11 @@
     }
 
     .balance-negative {
-        color: #ef4444; /* Rojo */
+        color: #ef4444;
         font-weight: 700;
         background: #fee2e2;
         padding: 6px 12px;
         border-radius: 10px;
-    }
-
-    .balance-neutral {
-        color: #64748b;
-        font-weight: 700;
-        background: #f1f5f9;
-        padding: 6px 12px;
-        border-radius: 10px;
-    }
-
-    /* Badges y Botones */
-    .badge-soft-primary {
-        background: #dbeafe;
-        color: #2563eb;
-        padding: 0.3rem 0.8rem;
-        border-radius: 30px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
 
     .btn-primary-custom {
@@ -88,16 +89,7 @@
         padding: 0.8rem 1.5rem;
         font-weight: 600;
         border: none;
-        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-        transition: all 0.2s;
     }
-
-        .btn-primary-custom:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
-            color: white;
-        }
 
     .btn-action-circle {
         width: 36px;
@@ -106,148 +98,182 @@
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        transition: all 0.2s;
         background: white;
         border: 1px solid #e2e8f0;
     }
-
-        .btn-action-circle:hover {
-            background: #f1f5f9;
-        }
 </style>
 
 <div class="bg-dashboard pt-4">
     <div class="container max-w-6xl">
 
+        @* ENCABEZADO *@
         <div class="d-flex justify-content-between align-items-center mb-5">
             <div class="d-flex align-items-center">
-                <div class="p-3 rounded-circle bg-primary bg-opacity-10 me-3">
-                    <i class="fa-solid fa-plane-departure fa-2x text-primary"></i>
-                </div>
+                @if (!string.IsNullOrEmpty(Model.IMAGEN) && Model.IMAGEN.StartsWith("/"))
+                {
+                    <img src="@Model.IMAGEN" class="rounded-circle me-3 shadow-sm" style="width: 55px; height: 55px; object-fit: cover; border: 2px solid #e2e8f0;">
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle me-3 fs-2 fw-bold" style="width: 55px; height: 55px;">
+                        @(string.IsNullOrEmpty(Model.IMAGEN) ? "✈️" : Model.IMAGEN)
+                    </div>
+                }
                 <div>
-                    <h1 class="fw-bold mb-0 text-dark">@Model.NOMBREACTIVIDAD</h1>
-                    <span class="text-muted small fw-semibold">
-                        <i class="fa-solid fa-coins me-1"></i> Moneda Base: @Model.MONEDAPRINCIPAL
-                    </span>
+                    <div class="d-flex align-items-center gap-3">
+                        <h1 class="fw-bold mb-0 text-dark">@Model.NOMBREACTIVIDAD</h1>
+                        <form asp-action="DeleteActividad" method="post" onsubmit="return confirm('¿Borrar actividad?');">
+                            <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                            <button type="submit" class="btn btn-link text-danger p-0 border-0"><i class="fa-solid fa-trash-can fs-5"></i></button>
+                        </form>
+                        <div class="bg-warning bg-opacity-10 border border-warning border-opacity-25 px-3 py-1 rounded-pill">
+                            <span class="text-warning-emphasis small fw-bold">CÓDIGO: @Model.INVITACIONCOD</span>
+                        </div>
+                    </div>
+                    <span class="text-muted small fw-semibold"><i class="fa-solid fa-coins me-1"></i> Moneda Base: @Model.MONEDAPRINCIPAL</span>
                 </div>
             </div>
-
-            <div>
-                <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-primary-custom text-decoration-none">
-                    <i class="fa-solid fa-plus me-2"></i>Añadir gasto
-                </a>
+            <div class="d-flex gap-2">
+                <a asp-action="AddParticipante" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light text-primary border fw-bold text-decoration-none" style="border-radius: 12px; padding: 0.8rem 1.5rem;"><i class="fa-solid fa-user-plus me-2"></i>Amigos</a>
+                <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-primary-custom text-decoration-none">Añadir gasto</a>
+                <a asp-controller="Estadisticas" asp-action="Index" asp-route-idActividad="@Model.IDACTIVIDAD" class="btn btn-light text-dark border fw-bold text-decoration-none shadow-sm" style="border-radius: 12px; padding: 0.8rem 1.5rem;"><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Estadísticas</a>
             </div>
         </div>
 
         <div class="row g-4">
             <div class="col-lg-7">
-                <div class="clean-card">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-receipt me-2 text-muted"></i> Historial de Gastos</h5>
-                        <span class="badge bg-light text-dark border">@Model.Gastos?.Count() Gastos</span>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="clean-card p-3 text-center border-0 shadow-sm" style="background: #334155; color: white;">
+                            <span class="small opacity-75 d-block mb-1 text-uppercase fw-bold">Gasto Total Grupo</span>
+                            <h4 class="fw-bold mb-0">@totalActividad.ToString("N2") <small class="fs-6">@Model.MONEDAPRINCIPAL</small></h4>
+                        </div>
                     </div>
-
-                    @if (Model.Gastos != null && Model.Gastos.Any())
-                    {
-                        <div class="d-flex flex-column gap-1">
-                            @foreach (var gasto in Model.Gastos.OrderByDescending(g => g.FECHA))
+                    <div class="col-6">
+                        <div class="clean-card p-3 text-center border-0 shadow-sm" style="background: @(soyElMaximoGastador ? "#10b981" : "#3b82f6"); color: white;">
+                            <span class="small opacity-75 d-block mb-1 text-uppercase fw-bold">Tu Gasto Real</span>
+                            <h4 class="fw-bold mb-0">@miGastoReal.ToString("N2") <small class="fs-6">@Model.MONEDAPRINCIPAL</small></h4>
+                            @if (soyElMaximoGastador)
                             {
-                                <div class="list-item-modern">
-                                    <div>
-                                        <span class="fw-bold text-dark fs-6">@gasto.CONCEPTO</span>
-                                        <div class="mt-1">
-                                            <span class="badge bg-light text-secondary border me-1">
-                                                <i class="fa-regular fa-calendar me-1"></i> @gasto.FECHA.ToString("dd MMM")
-                                            </span>
-                                            <span class="text-muted small fw-semibold">
-                                                Pagado por: <span class="text-dark">@gasto.Pagador?.NOMBREPARTICIPANTE</span>
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div class="d-flex align-items-center gap-4">
-                                        <span class="fw-bold fs-5 text-dark">@gasto.IMPORTE.ToString("N2") <span class="fs-6 text-muted">@Model.MONEDAPRINCIPAL</span></span>
-
-                                        <div class="d-flex gap-2 border-start ps-3">
-                                            <a asp-controller="Actividades" asp-action="EditGasto" asp-route-idGasto="@gasto.IDGASTO"
-                                               class="btn-action-circle text-primary text-decoration-none" title="Editar">
-                                                <i class="fa-solid fa-pen" style="font-size: 0.85rem;"></i>
-                                            </a>
-
-                                            <form asp-controller="Actividades" asp-action="DeleteGasto" method="post" class="m-0 p-0"
-                                                  onsubmit="return confirm('¿Estás seguro de que quieres borrar este gasto? Esta acción modificará los balances.');">
-                                                <input type="hidden" name="idGasto" value="@gasto.IDGASTO" />
-                                                <button type="submit" class="btn-action-circle text-danger bg-transparent" title="Borrar">
-                                                    <i class="fa-solid fa-trash" style="font-size: 0.85rem;"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
+                                <span class="badge bg-white text-success p-1 mt-1 fw-bold" style="font-size:0.55rem">🥇 BANQUERO</span>
                             }
                         </div>
-                    }
-                    else
+                    </div>
+                </div>
+
+                <div class="clean-card">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-receipt me-2 text-muted"></i> Historial de Gastos</h5>
+                    @if (Model.Gastos != null)
                     {
-                        <div class="text-center py-5 bg-light rounded-4 border border-dashed">
-                            <i class="fa-solid fa-wallet fa-3x text-muted mb-3 opacity-25"></i>
-                            <h6 class="fw-bold text-dark">Ningún gasto registrado</h6>
-                            <p class="text-muted mb-0 small">Haz clic en "Añadir gasto" para empezar a dividir las cuentas.</p>
-                        </div>
+                        @foreach (var gasto in Model.Gastos.OrderByDescending(g => g.FECHA))
+                        {
+                            <div class="list-item-modern">
+                                <div>
+                                    <span class="fw-bold text-dark fs-6">@gasto.CONCEPTO</span>
+                                    <div class="mt-1 small text-muted">
+                                        <i class="fa-regular fa-calendar me-1"></i> @gasto.FECHA.ToString("dd MMM") | Pagado por: @gasto.Pagador?.NOMBREPARTICIPANTE
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="fw-bold fs-5">@gasto.IMPORTE.ToString("N2")</span>
+                                    <div class="d-flex gap-1 border-start ps-3">
+                                        <a asp-action="EditGasto" asp-route-idGasto="@gasto.IDGASTO" class="btn-action-circle text-primary text-decoration-none"><i class="fa-solid fa-pen"></i></a>
+                                        <form asp-action="DeleteGasto" method="post" onsubmit="return confirm('¿Borrar?');">
+                                            <input type="hidden" name="idGasto" value="@gasto.IDGASTO" />
+                                            <button type="submit" class="btn-action-circle text-danger border-0 bg-transparent"><i class="fa-solid fa-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     }
                 </div>
             </div>
 
             <div class="col-lg-5 d-flex flex-column gap-4">
-
-                <div class="clean-card">
-                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-scale-balanced me-2 text-muted"></i> Balances</h5>
-                    @if (balances != null && balances.Any())
+                <div class="clean-card" style="height: auto;">
+                    <h5 class="fw-bold text-dark mb-4">Balances</h5>
+                    @if (balances != null)
                     {
                         @foreach (var b in balances)
                         {
                             <div class="list-item-modern px-3 py-2 mb-2">
                                 <span class="fw-bold text-dark">@b.Participante</span>
-
-                                @if (b.Debe > 0)
-                                {
-                                    <span class="balance-positive">+@b.Debe.ToString("N2") @Model.MONEDAPRINCIPAL</span>
-                                }
-                                else if (b.Debe < 0)
-                                {
-                                    <span class="balance-negative">@b.Debe.ToString("N2") @Model.MONEDAPRINCIPAL</span>
-                                }
-                                else
-                                {
-                                    <span class="balance-neutral">0.00 @Model.MONEDAPRINCIPAL</span>
-                                }
+                                <span class="@(b.Debe > 0.01 ? "balance-positive" : (b.Debe < -0.01 ? "balance-negative" : ""))">
+                                    @(b.Debe > 0 ? "+" : "")@b.Debe.ToString("N2")
+                                </span>
                             </div>
                         }
                     }
-                    else
-                    {
-                        <p class="text-muted small text-center my-3">Añade más gastos para calcular los balances.</p>
-                    }
                 </div>
 
-                <div class="clean-card">
-                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-users me-2 text-muted"></i> Participantes</h5>
+                @* GESTIÓN DE DEUDAS *@
+                @if (ViewBag.Transferencias != null)
+                {
+                    var transferencias = ViewBag.Transferencias as List<RandomPayMCSD.Services.Transferencia>;
+                    var misDeudas = transferencias.Where(t => t.IdDeudor == miId).ToList();
+                    var meDeben = transferencias.Where(t => t.IdAcreedor == miId).ToList();
+                    var otras = transferencias.Where(t => t.IdDeudor != miId && t.IdAcreedor != miId).ToList();
+
+                    <div class="clean-card border-success" style="border-width: 2px; height: auto;">
+                        <h5 class="fw-bold text-dark mb-4">Gestión de Deudas</h5>
+
+                        @if (misDeudas.Any())
+                        {
+                            <h6 class="fw-bold text-danger small">DEBES PAGAR:</h6>
+                            @foreach (var t in misDeudas)
+                            {
+                                <div class="bg-danger bg-opacity-10 p-3 rounded-4 mb-2 d-flex justify-content-between align-items-center border border-danger border-opacity-25">
+                                    <span class="small"><b>@t.Cantidad.ToString("N2")</b> a @t.NombreAcreedor</span>
+                                    <form asp-action="SaldarDeuda" method="post"><input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" /><input type="hidden" name="idDeudor" value="@t.IdDeudor" /><input type="hidden" name="idAcreedor" value="@t.IdAcreedor" /><input type="hidden" name="cantidadString" value="@t.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" /><button type="submit" class="btn btn-danger btn-sm">Pagar</button></form>
+                                </div>
+                            }
+                        }
+
+                        @if (meDeben.Any())
+                        {
+                            <h6 class="fw-bold text-primary small mt-3">TE DEBEN INGRESAR:</h6>
+                            @foreach (var t in meDeben)
+                            {
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-4 mb-1 small text-dark border border-primary border-opacity-25"><b>@t.NombreDeudor</b> te debe @t.Cantidad.ToString("N2")</div>
+                            }
+                        }
+
+                        @if (otras.Any())
+                        {
+                            @if (misDeudas.Any() || meDeben.Any())
+                            {
+                                <hr />
+                            }
+                            <h6 class="fw-bold text-muted small">OTROS MOVIMIENTOS:</h6>
+                            @foreach (var t in otras)
+                            {
+                                <div class="small text-muted py-1 border-bottom">@t.NombreDeudor debe @t.Cantidad.ToString("N2") a @t.NombreAcreedor</div>
+                            }
+                        }
+
+                        @if (!misDeudas.Any() && !meDeben.Any() && !otras.Any())
+                        {
+                            <div class="text-center text-success fw-bold py-2 small">✨ ¡Cuentas totalmente claras!</div>
+                        }
+                    </div>
+                }
+
+                <div class="clean-card" style="height: auto;">
+                    <h5 class="fw-bold text-dark mb-4">Participantes</h5>
                     <div class="d-flex flex-wrap gap-2">
                         @foreach (var p in Model.Participantes)
                         {
                             <div class="bg-light border rounded-pill px-3 py-2 d-flex align-items-center">
-                                <i class="fa-regular fa-circle-user text-secondary me-2"></i>
-                                <span class="fw-semibold text-dark fs-6">@p.NOMBREPARTICIPANTE</span>
-
+                                <span class="fw-semibold @(p.IDUSUARIO == currentUser?.IDUSUARIO ? "text-primary" : "")">@p.NOMBREPARTICIPANTE</span>
                                 @if (p.IDUSUARIO == currentUser?.IDUSUARIO)
                                 {
-                                    <span class="badge-soft-primary ms-2">TÚ</span>
+                                    <span class="badge bg-primary ms-2" style="font-size:0.6rem">TÚ</span>
                                 }
                             </div>
                         }
                     </div>
                 </div>
-
             </div>
         </div>
     </div>

@@ -31,5 +31,6 @@ namespace RandomPayMCSD.Models
 
         [ForeignKey("IDPAGADOR")]
         public Participante Pagador { get; set; }
+        public List<RepartoGasto> Repartos { get; set; }
     }
 }

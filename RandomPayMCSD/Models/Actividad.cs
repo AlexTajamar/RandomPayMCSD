@@ -28,6 +28,9 @@ namespace RandomPayMCSD.Models
         [ForeignKey("IDCREADOR")]
         public Usuario Creador { get; set; }
 
+        [Column("IMAGEN")]
+        public string? IMAGEN { get; set; }
+
         public ICollection<Participante> Participantes { get; set; }
         public ICollection<Gasto> Gastos { get; set; }
     }

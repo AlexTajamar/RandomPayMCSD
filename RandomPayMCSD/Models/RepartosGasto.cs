@@ -18,5 +18,9 @@ namespace RandomPayMCSD.Models
 
         [Column("CANTIDAD")]
         public double Cantidad { get; set; }
+
+        // --- AÑADE ESTO PARA ARREGLAR EL ERROR DE LA COLUMNA ---
+        [ForeignKey("IdGasto")]
+        public Gasto? Gasto { get; set; }
     }
 }

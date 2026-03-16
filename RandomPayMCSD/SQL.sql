@@ -1,4 +1,6 @@
-﻿USE [master]
+﻿
+USE [master]
+
 GO
 /****** Object:  Database [RANDOMPAY]    Script Date: 16/03/2026 14:15:33 ******/
 CREATE DATABASE [RANDOMPAY]

@@ -2,117 +2,13 @@
 @{
     ViewData["Title"] = "DivisaChange Pro";
     double resultado = ViewBag.Resultado ?? 0;
+    string importeValor = ViewBag.Importe != null ? ViewBag.Importe.ToString() : "";
 }
 
-<style>
-    /* Contenedor principal con fondo suave */
-    .converter-body {
-        background-color: #f8fafc;
-        min-height: 80vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
-
-    /* Tarjeta estilo Neumorfismo suave */
-    .glass-card {
-        background: white;
-        border-radius: 30px;
-        padding: 40px;
-        width: 100%;
-        max-width: 550px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        border: 1px solid #e2e8f0;
-    }
-
-    /* Cabecera con icono circular */
-    .icon-header {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border-radius: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 20px;
-        box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
-    }
-
-    /* Estilo de los Inputs y Selects */
-    .form-label {
-        font-weight: 700;
-        color: #334155;
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-    }
-
-    .custom-input {
-        border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 12px 15px;
-        font-size: 1.1rem;
-        transition: all 0.3s;
-        background-color: #fcfcfd;
-    }
-
-        .custom-input:focus {
-            border-color: #10b981;
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-            background-color: white;
-        }
-
-    /* Botón de acción principal */
-    .btn-convert-master {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        border: none;
-        border-radius: 15px;
-        padding: 15px;
-        width: 100%;
-        font-weight: 800;
-        font-size: 1.1rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: all 0.3s;
-        margin-top: 10px;
-    }
-
-        .btn-convert-master:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 20px -5px rgba(16, 185, 129, 0.4);
-            filter: brightness(1.1);
-        }
-
-    /* Caja de Resultado Impactante */
-    .result-display {
-        background-color: #ecfdf5;
-        border-radius: 20px;
-        padding: 25px;
-        margin-top: 30px;
-        border: 2px solid #10b981;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .result-val {
-        font-size: 2.5rem;
-        font-weight: 900;
-        color: #065f46;
-        margin: 0;
-    }
-
-    .currency-label {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #059669;
-    }
-</style>
-
-<div class="converter-body">
-    <div class="glass-card text-center">
-        <div class="icon-header">
-            <i class="fa-solid fa-money-bill-transfer fa-2x text-white"></i>
+<div class="container mt-5 mb-5 d-flex justify-content-center">
+    <div class="clean-card text-center" style="max-width: 550px; width: 100%;">
+        <div class="p-3 bg-success bg-opacity-10 text-success rounded-circle d-inline-block mb-3">
+            <i class="fa-solid fa-money-bill-transfer fa-3x"></i>
         </div>
 
         <h2 class="fw-bold text-dark mb-1">DivisaChange</h2>
@@ -120,19 +16,19 @@
 
         <form asp-action="Divisas" method="post">
             <div class="mb-4 text-start">
-                <label class="form-label">CANTIDAD A CONVERTIR</label>
+                <label class="form-label fw-bold text-muted small">CANTIDAD A CONVERTIR</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border: 2px solid #e2e8f0;">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border: 2px solid #e5e7eb;">
                         <i class="fa-solid fa-coins text-success"></i>
                     </span>
-                    <input type="number" name="importe" step="0.01" class="form-control custom-input border-start-0"
-                           style="border-radius: 0 12px 12px 0;" placeholder="0.00" value="@ViewBag.Importe" required>
+                    <input type="text" name="importeString" class="form-control custom-input border-start-0"
+                           style="border-radius: 0 12px 12px 0;" placeholder="0.00" value="@importeValor" required autocomplete="off">
                 </div>
             </div>
 
             <div class="row g-3 mb-4 text-start">
                 <div class="col-6">
-                    <label class="form-label">DE:</label>
+                    <label class="form-label fw-bold text-muted small">DE:</label>
                     <select name="origen" class="form-select custom-input">
                         @foreach (var d in Model)
                         {
@@ -141,7 +37,7 @@
                     </select>
                 </div>
                 <div class="col-6">
-                    <label class="form-label">A:</label>
+                    <label class="form-label fw-bold text-muted small">A:</label>
                     <select name="destino" class="form-select custom-input">
                         @foreach (var d in Model)
                         {
@@ -151,22 +47,22 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn-convert-master">
+            <button type="submit" class="btn-primary-custom w-100 py-3 text-uppercase" style="background-color: #10b981;">
                 Convertir Dinero <i class="fa-solid fa-chevron-right ms-2 small"></i>
             </button>
         </form>
 
         @if (resultado > 0)
         {
-            <div class="result-display animate__animated animate__backInUp">
+            <div class="mt-4 p-4 rounded-4" style="background-color: #ecfdf5; border: 2px solid #10b981;">
                 <p class="text-uppercase small fw-bold text-muted mb-1">Tienes aproximadamente:</p>
-                <h3 class="result-val">@resultado.ToString("N2")</h3>
-                <span class="currency-label">@ViewBag.Destino</span>
+                <h3 class="fw-bold m-0" style="color: #065f46; font-size: 2.5rem;">@resultado.ToString("N2")</h3>
+                <span class="fw-bold" style="color: #059669; font-size: 1.1rem;">@ViewBag.Destino</span>
             </div>
         }
 
-        <div class="mt-4 pt-3">
-            <a asp-action="Index" class="text-decoration-none text-muted small fw-bold">
+        <div class="mt-4">
+            <a asp-controller="Statics" asp-action="Index" class="text-decoration-none text-muted small fw-bold">
                 <i class="fa-solid fa-arrow-left me-1"></i> VOLVER AL PANEL
             </a>
         </div>

@@ -3,59 +3,32 @@
     string mensaje = ViewData["MENSAJE"] as string;
 }
 
-<style>
-    .login-card {
-        background: white;
-        border-radius: 32px;
-        box-shadow: 0 20px 35px -8px rgba(0,0,0,0.1);
-        padding: 2.5rem;
-        max-width: 450px;
-        margin: 2rem auto;
-    }
-
-    .btn-login {
-        background: #2563eb;
-        color: white;
-        border-radius: 40px;
-        padding: 0.8rem;
-        font-weight: 600;
-        border: none;
-        width: 100%;
-        transition: all 0.2s;
-    }
-
-        .btn-login:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-        }
-</style>
-
-<div class="container">
-    <div class="login-card">
+<div class="container d-flex justify-content-center" style="min-height: 80vh; align-items: center;">
+    <div class="clean-card" style="width: 100%; max-width: 450px;">
         <div class="text-center mb-4">
-            <i class="fa-solid fa-money-bill-transfer fa-3x" style="color: #2563eb;"></i>
-            <h2 class="fw-bold mt-3" style="color: #2563eb;">RandomPay</h2>
+            <i class="fa-solid fa-money-bill-transfer fa-3x text-primary"></i>
+            <h2 class="fw-bold mt-3 text-primary">RandomPay</h2>
             <p class="text-muted">Comparte gastos fácilmente</p>
         </div>
 
         @if (!string.IsNullOrEmpty(mensaje))
         {
-            <div class="alert alert-danger rounded-4">@mensaje</div>
+            <div class="alert alert-danger rounded-4 fw-bold">@mensaje</div>
         }
 
         <form method="post">
             <div class="mb-4">
-                <label class="form-label fw-semibold">Email</label>
-                <input type="email" name="email" class="form-control form-control-lg rounded-4" required />
+                <label class="form-label fw-bold text-muted small">EMAIL</label>
+                <input type="email" name="email" class="form-control custom-input" required autofocus />
             </div>
             <div class="mb-4">
-                <label class="form-label fw-semibold">Contraseña</label>
-                <input type="password" name="password" class="form-control form-control-lg rounded-4" required />
+                <label class="form-label fw-bold text-muted small">CONTRASEÑA</label>
+                <input type="password" name="password" class="form-control custom-input" required />
             </div>
-            <button type="submit" class="btn-login">Iniciar sesión</button>
+            <button type="submit" class="btn-primary-custom w-100 py-3">Iniciar sesión</button>
         </form>
-        <p class="text-center mt-4 text-muted small">
-            ¿No tienes cuenta? <a href="#" style="color: #2563eb;">Regístrate</a> (próximamente)
+        <p class="text-center mt-4 text-muted small fw-semibold">
+            ¿No tienes cuenta? <a href="#" class="text-primary text-decoration-none">Regístrate</a> (próximamente)
         </p>
     </div>
 </div>

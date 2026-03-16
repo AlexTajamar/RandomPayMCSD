@@ -7,14 +7,10 @@
     var balances = ViewBag.Balances as List<RandomPayMCSD.Services.BalanceItem>;
     var currentUser = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
 
-    // 1. Gasto total del grupo
     var totalActividad = Model.Gastos?.Sum(g => g.IMPORTE) ?? 0;
-
-    // 2. Buscamos tu ID de participante
     var miParticipanteLogueado = Model.Participantes.FirstOrDefault(p => p.IDUSUARIO == currentUser?.IDUSUARIO);
     int miId = miParticipanteLogueado?.IDPARTICIPANTE ?? 0;
 
-    // 3. CÁLCULO GASTO REAL (Lo que tú has consumido)
     decimal miGastoReal = 0;
     if (Model.Gastos != null)
     {
@@ -28,7 +24,6 @@
     }
     miGastoReal = Math.Round(miGastoReal, 2);
 
-    // 4. ¿Eres el que más ha pagado físicamente?
     var maxBalance = balances?.OrderByDescending(b => b.Debe).FirstOrDefault();
     bool soyElMaximoGastador = maxBalance != null && maxBalance.Participante == miParticipanteLogueado?.NOMBREPARTICIPANTE && maxBalance.Debe > 0.01;
 }
@@ -122,10 +117,14 @@
                 <div>
                     <div class="d-flex align-items-center gap-3">
                         <h1 class="fw-bold mb-0 text-dark">@Model.NOMBREACTIVIDAD</h1>
-                        <form asp-action="DeleteActividad" method="post" onsubmit="return confirm('¿Borrar actividad?');">
+
+                        <form id="form-delete-actividad" asp-action="DeleteActividad" method="post">
                             <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
-                            <button type="submit" class="btn btn-link text-danger p-0 border-0"><i class="fa-solid fa-trash-can fs-5"></i></button>
+                            <button type="button" class="btn btn-link text-danger p-0 border-0" onclick="confirmarAccion('actividad')">
+                                <i class="fa-solid fa-trash-can fs-5"></i>
+                            </button>
                         </form>
+
                         <div class="bg-warning bg-opacity-10 border border-warning border-opacity-25 px-3 py-1 rounded-pill">
                             <span class="text-warning-emphasis small fw-bold">CÓDIGO: @Model.INVITACIONCOD</span>
                         </div>
@@ -161,31 +160,104 @@
                     </div>
                 </div>
 
-                <div class="clean-card">
+                <div class="clean-card mb-4" style="border-top: 4px solid #10b981; height: auto;">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-cart-shopping me-2 text-success"></i> Lista de la compra</h5>
+
+                    <form asp-action="AddItemCompra" method="post" class="mb-4">
+                        <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                        <div class="input-group">
+                            <input type="text" name="nombreItem" class="form-control custom-input" placeholder="Ej: Entradas, Barbacoa..." style="border-radius: 12px 0 0 12px;" required autocomplete="off">
+                            <input type="number" step="0.01" min="0" name="precioEstimadoStr" class="form-control custom-input" placeholder="Est. @Model.MONEDAPRINCIPAL" style="max-width: 130px; border-radius: 0;" required autocomplete="off">
+                            <button type="submit" class="btn btn-success px-3 fw-bold" style="border-radius: 0 12px 12px 0;">
+                                <i class="fa-solid fa-plus"></i> Añadir
+                            </button>
+                        </div>
+                    </form>
+
+                    @{
+                        var listaCompra = ViewBag.ListaCompra as List<RandomPayMCSD.Models.ItemCompra>;
+                    }
+
+                    @if (listaCompra != null && listaCompra.Any())
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var item in listaCompra)
+                            {
+                                <div class="list-item-modern p-3 @(item.Comprado ? "opacity-50 bg-light" : "")" style="margin-bottom: 0;">
+                                    <div class="d-flex align-items-center">
+                                        @if (item.Comprado)
+                                        {
+
+                                            <div>
+                                                <h6 class="mb-0 fw-bold text-decoration-line-through">@item.NombreItem</h6>
+                                                <small class="text-muted">Ya comprado</small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <i class="fa-regular fa-circle text-muted fs-4 me-3"></i>
+                                            <div>
+                                                <h6 class="mb-0 fw-bold text-dark">@item.NombreItem</h6>
+                                                <small class="text-muted fw-bold">Est: @item.PrecioEstimado.ToString("N2") @Model.MONEDAPRINCIPAL</small>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="d-flex gap-2">
+                                        @if (!item.Comprado)
+                                        {
+                                            <a href="@Url.Action("AddGasto", "Actividades", new { id = Model.IDACTIVIDAD, idItemCompra = item.IdItem })" class="btn btn-sm btn-primary-custom text-decoration-none" style="padding: 0.4rem 1rem;">
+                                                Finalizar
+                                            </a>
+                                            <form asp-action="DeleteItemCompra" method="post">
+                                                <input type="hidden" name="idItem" value="@item.IdItem" />
+                                                <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                                                <button type="submit" class="btn btn-sm btn-light border text-danger" title="Borrar de la lista">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center p-3 text-muted small">La lista está vacía. Añade lo que necesitéis comprar.</div>
+                    }
+                </div>
+
+                <div class="clean-card" style="height: auto;">
                     <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-receipt me-2 text-muted"></i> Historial de Gastos</h5>
-                    @if (Model.Gastos != null)
+                    @if (Model.Gastos != null && Model.Gastos.Any())
                     {
                         @foreach (var gasto in Model.Gastos.OrderByDescending(g => g.FECHA))
                         {
                             <div class="list-item-modern">
                                 <div>
                                     <span class="fw-bold text-dark fs-6">@gasto.CONCEPTO</span>
-                                    <div class="mt-1 small text-muted">
-                                        <i class="fa-regular fa-calendar me-1"></i> @gasto.FECHA.ToString("dd MMM") | Pagado por: @gasto.Pagador?.NOMBREPARTICIPANTE
-                                    </div>
+                                    <div class="mt-1 small text-muted">@gasto.FECHA.ToString("dd MMM") | Pagado por: @gasto.Pagador?.NOMBREPARTICIPANTE</div>
                                 </div>
                                 <div class="d-flex align-items-center gap-3">
                                     <span class="fw-bold fs-5">@gasto.IMPORTE.ToString("N2")</span>
                                     <div class="d-flex gap-1 border-start ps-3">
                                         <a asp-action="EditGasto" asp-route-idGasto="@gasto.IDGASTO" class="btn-action-circle text-primary text-decoration-none"><i class="fa-solid fa-pen"></i></a>
-                                        <form asp-action="DeleteGasto" method="post" onsubmit="return confirm('¿Borrar?');">
+
+                                        <form id="form-delete-gasto-@gasto.IDGASTO" asp-action="DeleteGasto" method="post">
                                             <input type="hidden" name="idGasto" value="@gasto.IDGASTO" />
-                                            <button type="submit" class="btn-action-circle text-danger border-0 bg-transparent"><i class="fa-solid fa-trash"></i></button>
+                                            <button type="button" class="btn-action-circle text-danger border-0 bg-transparent" onclick="confirmarAccion('gasto', '@gasto.IDGASTO')">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
                                         </form>
                                     </div>
                                 </div>
                             </div>
                         }
+                    }
+                    else
+                    {
+                        <div class="text-center p-3 text-muted small">Aún no hay gastos registrados.</div>
                     }
                 </div>
             </div>
@@ -197,7 +269,7 @@
                     {
                         @foreach (var b in balances)
                         {
-                            <div class="list-item-modern px-3 py-2 mb-2">
+                            <div class="list-item-modern px-3 py-2 mb-2 shadow-none border-0 bg-light">
                                 <span class="fw-bold text-dark">@b.Participante</span>
                                 <span class="@(b.Debe > 0.01 ? "balance-positive" : (b.Debe < -0.01 ? "balance-negative" : ""))">
                                     @(b.Debe > 0 ? "+" : "")@b.Debe.ToString("N2")
@@ -207,7 +279,6 @@
                     }
                 </div>
 
-                @* GESTIÓN DE DEUDAS *@
                 @if (ViewBag.Transferencias != null)
                 {
                     var transferencias = ViewBag.Transferencias as List<RandomPayMCSD.Services.Transferencia>;
@@ -217,19 +288,23 @@
 
                     <div class="clean-card border-success" style="border-width: 2px; height: auto;">
                         <h5 class="fw-bold text-dark mb-4">Gestión de Deudas</h5>
-
                         @if (misDeudas.Any())
                         {
                             <h6 class="fw-bold text-danger small">DEBES PAGAR:</h6>
                             @foreach (var t in misDeudas)
                             {
                                 <div class="bg-danger bg-opacity-10 p-3 rounded-4 mb-2 d-flex justify-content-between align-items-center border border-danger border-opacity-25">
-                                    <span class="small"><b>@t.Cantidad.ToString("N2")</b> a @t.NombreAcreedor</span>
-                                    <form asp-action="SaldarDeuda" method="post"><input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" /><input type="hidden" name="idDeudor" value="@t.IdDeudor" /><input type="hidden" name="idAcreedor" value="@t.IdAcreedor" /><input type="hidden" name="cantidadString" value="@t.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" /><button type="submit" class="btn btn-danger btn-sm">Pagar</button></form>
+                                    <span class="small">Debes <b>@t.Cantidad.ToString("N2")</b> a @t.NombreAcreedor</span>
+                                    <form id="form-saldar-@t.IdAcreedor" asp-action="SaldarDeuda" method="post">
+                                        <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                                        <input type="hidden" name="idDeudor" value="@t.IdDeudor" />
+                                        <input type="hidden" name="idAcreedor" value="@t.IdAcreedor" />
+                                        <input type="hidden" name="cantidadString" value="@t.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                        <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="confirmarAccion('saldar', '@t.IdAcreedor')">Pagar</button>
+                                    </form>
                                 </div>
                             }
                         }
-
                         @if (meDeben.Any())
                         {
                             <h6 class="fw-bold text-primary small mt-3">TE DEBEN INGRESAR:</h6>
@@ -238,23 +313,14 @@
                                 <div class="bg-primary bg-opacity-10 p-3 rounded-4 mb-1 small text-dark border border-primary border-opacity-25"><b>@t.NombreDeudor</b> te debe @t.Cantidad.ToString("N2")</div>
                             }
                         }
-
                         @if (otras.Any())
                         {
-                            @if (misDeudas.Any() || meDeben.Any())
-                            {
-                                <hr />
-                            }
+                            <hr />
                             <h6 class="fw-bold text-muted small">OTROS MOVIMIENTOS:</h6>
                             @foreach (var t in otras)
                             {
                                 <div class="small text-muted py-1 border-bottom">@t.NombreDeudor debe @t.Cantidad.ToString("N2") a @t.NombreAcreedor</div>
                             }
-                        }
-
-                        @if (!misDeudas.Any() && !meDeben.Any() && !otras.Any())
-                        {
-                            <div class="text-center text-success fw-bold py-2 small">✨ ¡Cuentas totalmente claras!</div>
                         }
                     </div>
                 }
@@ -278,3 +344,39 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function confirmarAccion(tipo, id = '') {
+            let config = {
+                title: '¿Estás seguro?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, confirmar',
+                cancelButtonText: 'Cancelar'
+            };
+
+            if (tipo === 'gasto') {
+                config.text = "Este gasto se eliminará para siempre.";
+                config.targetForm = `form-delete-gasto-${id}`;
+            } else if (tipo === 'actividad') {
+                config.text = "Se borrará la actividad, gastos y participantes.";
+                config.targetForm = "form-delete-actividad";
+            } else if (tipo === 'saldar') {
+                config.title = "¿Has pagado ya?";
+                config.text = "Se registrará un reembolso en la lista.";
+                config.icon = 'question';
+                config.confirmButtonColor = '#10b981';
+                config.targetForm = `form-saldar-${id}`;
+            }
+
+            Swal.fire(config).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(config.targetForm).submit();
+                }
+            });
+        }
+    </script>
+}

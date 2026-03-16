@@ -4,6 +4,7 @@ using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
+using System.Globalization;
 
 namespace RandomPayMCSD.Controllers
 {
@@ -14,11 +15,13 @@ namespace RandomPayMCSD.Controllers
         private readonly IRepositoryParticipantes _repoParticipantes;
         private readonly IRepositoryRepartos _repoRepartos;
         private readonly IRepositoryDivisas _repoDivisas;
+        private readonly IRepositoryListaCompra _repoListaCompra; // <--- AÑADIDO
         private readonly BalanceService _balanceService;
         private readonly InvitationService _invitationService;
 
         public ActividadesController(
             IRepositoryActividades repoActividades,
+            IRepositoryListaCompra repoListaCompra, // <--- AÑADIDO
             IRepositoryGastos repoGastos,
             IRepositoryDivisas repoDivisas,
             IRepositoryParticipantes repoParticipantes,
@@ -33,6 +36,7 @@ namespace RandomPayMCSD.Controllers
             _invitationService = invitationService;
             _repoRepartos = repoRepartos;
             _repoDivisas = repoDivisas;
+            _repoListaCompra = repoListaCompra; // <--- AÑADIDO
         }
 
         // --- 1. DETALLE Y GESTIÓN DE ACTIVIDAD ---
@@ -44,6 +48,9 @@ namespace RandomPayMCSD.Controllers
 
             ViewBag.Balances = await _balanceService.GetBalancesActividadAsync(id);
             ViewBag.Transferencias = await _balanceService.GetTransferenciasAsync(id);
+
+            // ---> ¡FALTABA ESTO! Cargar la lista de la compra de la base de datos
+            ViewBag.ListaCompra = await _repoListaCompra.GetByActividadAsync(id);
 
             return View(actividad);
         }
@@ -216,17 +223,56 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 3. GASTOS Y DEUDAS ---
+        // --- 3. NUEVOS MÉTODOS: LISTA DE LA COMPRA ---
 
-        public async Task<IActionResult> AddGasto(int id)
+        [HttpPost]
+        public async Task<IActionResult> AddItemCompra(int idActividad, string nombreItem, string precioEstimadoStr)
         {
-            ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(id);
-            ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
-            return View(new Gasto { IDACTIVIDAD = id, FECHA = DateTime.Now });
+            // AÑADIDO: Control de valores negativos (estimado >= 0)
+            if (double.TryParse(precioEstimadoStr.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double estimado) && estimado >= 0)
+            {
+                await _repoListaCompra.AddAsync(new ItemCompra
+                {
+                    IdActividad = idActividad,
+                    NombreItem = nombreItem,
+                    PrecioEstimado = (decimal)Math.Round(estimado, 2)
+                });
+            }
+            return RedirectToAction("Detalle", new { id = idActividad });
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddGasto(Gasto gastoNormal, string importeString, string divisaSeleccionada, List<int> idsParticipantes, List<string> cantidadesAsignadas)
+        public async Task<IActionResult> DeleteItemCompra(int idItem, int idActividad)
+        {
+            await _repoListaCompra.DeleteAsync(idItem);
+            return RedirectToAction("Detalle", new { id = idActividad });
+        }
+
+        // --- 4. GASTOS Y DEUDAS ---
+
+        public async Task<IActionResult> AddGasto(int id, int? idItemCompra)
+        {
+            ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(id);
+            ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
+
+            Gasto gasto = new Gasto { IDACTIVIDAD = id, FECHA = DateTime.Now };
+
+            if (idItemCompra.HasValue)
+            {
+                var item = await _repoListaCompra.GetByIdAsync(idItemCompra.Value);
+                if (item != null && !item.Comprado)
+                {
+                    gasto.CONCEPTO = item.NombreItem;
+                    gasto.IMPORTE = item.PrecioEstimado;
+                    ViewBag.IdItemCompra = item.IdItem;
+                }
+            }
+
+            return View(gasto);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddGasto(Gasto gastoNormal, string importeString, string divisaSeleccionada, List<int> idsParticipantes, List<string> cantidadesAsignadas, int? idItemCompra)
         {
             if (!string.IsNullOrWhiteSpace(importeString))
             {
@@ -269,10 +315,22 @@ namespace RandomPayMCSD.Controllers
                     }
                 }
             }
+
+            if (idItemCompra.HasValue)
+            {
+                var item = await _repoListaCompra.GetByIdAsync(idItemCompra.Value);
+                if (item != null)
+                {
+                    item.Comprado = true;
+                    item.IdGasto = gastoNormal.IDGASTO;
+                    await _repoListaCompra.UpdateAsync(item);
+                }
+            }
+
             return RedirectToAction("Detalle", new { id = gastoNormal.IDACTIVIDAD });
         }
 
-        // --- MÉTODOS DE EDICIÓN (LOS QUE FALTABAN) ---
+        // --- MÉTODOS DE EDICIÓN ---
 
         [HttpGet]
         public async Task<IActionResult> EditGasto(int idGasto)
@@ -337,7 +395,7 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 4. OTROS MÉTODOS (Ruleta, Delete, etc.) ---
+        // --- 5. OTROS MÉTODOS (Ruleta, Delete, etc.) ---
 
         public async Task<IActionResult> Ruleta(int id)
         {
@@ -355,6 +413,12 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteActividad(int idActividad)
         {
+            var itemsCompra = await _repoListaCompra.GetByActividadAsync(idActividad);
+            foreach (var item in itemsCompra)
+            {
+                await _repoListaCompra.DeleteAsync(item.IdItem);
+            }
+
             var gastos = await _repoGastos.GetByActividadIdAsync(idActividad);
             foreach (var gasto in gastos)
             {

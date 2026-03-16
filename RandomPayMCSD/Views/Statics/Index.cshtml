@@ -2,16 +2,45 @@
 @{
     ViewData["Title"] = "Inicio";
     var user = Context.Session.getObject<RandomPayMCSD.Models.Usuario>("USUARIO_LOGUEADO");
+
+    // Calculamos el total de los gastos de TODAS las actividades
+    decimal totalGastosAcumulados = 0;
+    if (Model != null)
+    {
+        foreach (var actividad in Model)
+        {
+            if (actividad.Gastos != null)
+            {
+                totalGastosAcumulados += actividad.Gastos.Sum(g => g.IMPORTE);
+            }
+        }
+    }
 }
 
 <style>
-    .welcome-section {
-        padding: 1.5rem 0;
-        margin-bottom: 2rem;
-        border-bottom: 1px solid #e2e8f0;
+    /* NUEVA TARJETA DE RESUMEN DE GASTOS */
+    .summary-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.5rem;
+        margin-top: 1rem;
     }
 
-    /* Diseño mejorado de las Action Cards */
+    @@media (max-width: 768px) {
+        .summary-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+    }
+
+    /* Diseño de las Action Cards */
     .action-card {
         border: none;
         border-radius: 20px;
@@ -20,7 +49,7 @@
         color: white;
         padding: 1.25rem;
         display: flex;
-        flex-direction: column; /* Icono arriba, texto abajo */
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 10px;
@@ -34,7 +63,6 @@
             box-shadow: 0 12px 20px rgba(0,0,0,0.15);
         }
 
-    /* Circulo para el icono dentro del botón */
     .icon-circle {
         width: 48px;
         height: 48px;
@@ -82,7 +110,6 @@
         color: inherit;
     }
 
-    /* Botón mejorado para Abandonar Actividad */
     .btn-delete-act {
         position: absolute;
         top: 0.75rem;
@@ -109,12 +136,21 @@
 
 <div class="container mt-3 mb-5 max-w-6xl">
 
-    <div class="welcome-section d-flex justify-content-between align-items-end">
-        <div>
-            <span class="text-muted fw-bold small text-uppercase"><i class="fa-solid fa-house me-1"></i> Panel Principal</span>
-            <h3 class="fw-bold mb-0 text-dark mt-1">¡Hola, @user?.NOMBRE! 👋</h3>
+    <div class="summary-card">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 65px; height: 65px;">
+                <i class="fa-solid fa-wallet fa-2x"></i>
+            </div>
+            <div>
+                <span class="text-muted fw-bold small text-uppercase">Histórico Global</span>
+                <h5 class="fw-bold mb-0 text-dark">Total movido en tus grupos</h5>
+            </div>
         </div>
-        <span class="badge bg-light text-primary border px-3 py-2 rounded-pill fw-bold">ROL: @user?.ROL</span>
+        <div class="text-md-end mt-3 mt-md-0">
+            <h2 class="mb-0 text-primary" style="font-weight: 900; font-size: 2.5rem; line-height: 1;">
+                @totalGastosAcumulados.ToString("N2") <span class="fs-5 text-muted fw-bold">€</span>
+            </h2>
+        </div>
     </div>
 
     <h6 class="fw-bold text-dark mb-3">¿Qué quieres hacer hoy?</h6>

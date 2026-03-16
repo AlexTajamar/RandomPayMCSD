@@ -26,6 +26,7 @@ builder.Services.AddScoped<IRepositoryGastos, RepositoryGastos>();
 builder.Services.AddScoped<IRepositoryParticipantes, RepositoryParticipantes>();
 builder.Services.AddTransient<IRepositoryDivisas, RepositoryDivisas>();
 builder.Services.AddTransient<IRepositoryRepartos, RepositoryRepartos>();
+builder.Services.AddScoped<IRepositoryListaCompra, RepositoryListaCompra>();
 builder.Services.AddTransient<BalanceService>();
 builder.Services.AddTransient<InvitationService>();
 

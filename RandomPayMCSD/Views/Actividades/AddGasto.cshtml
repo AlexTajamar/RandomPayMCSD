@@ -12,27 +12,6 @@
 }
 
 <style>
-    .clean-card {
-        background: white;
-        border-radius: 20px;
-        padding: 3rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
-    }
-
-    .custom-input {
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 0.8rem 1rem;
-        transition: all 0.2s;
-        font-weight: 500;
-    }
-
-        .custom-input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
-        }
-
     .participant-row {
         background: #f8fafc;
         border-radius: 12px;
@@ -89,6 +68,19 @@
             {
                 <input type="hidden" asp-for="IDGASTO" />
                 <input type="hidden" asp-for="FECHA" />
+            }
+
+            @* NUEVO: Si venimos de la lista de la compra *@
+            @if (ViewBag.IdItemCompra != null)
+            {
+                <input type="hidden" name="idItemCompra" value="@ViewBag.IdItemCompra" />
+                <div class="alert alert-success fw-bold rounded-4 mb-4 d-flex align-items-center" style="background-color: #ecfdf5; border: 2px solid #10b981; color: #065f46;">
+                    <i class="fa-solid fa-cart-circle-check fa-2x me-3 text-success"></i>
+                    <div>
+                        <h6 class="fw-bold mb-1">Confirmando compra de la lista</h6>
+                        <span class="small fw-normal">Ajusta el importe total si el precio real ha sido diferente al estimado.</span>
+                    </div>
+                </div>
             }
 
             <div class="row g-4 mb-4">
@@ -175,7 +167,7 @@
                 <a asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light border py-3 px-5 fw-bold" style="border-radius: 12px;">
                     Cancelar
                 </a>
-                <button type="submit" class="btn btn-primary py-3 px-5 fw-bold shadow-sm" style="border-radius: 12px;">
+                <button type="submit" class="btn-primary-custom py-3 px-5 fw-bold shadow-sm" style="border-radius: 12px;">
                     @(esEdicion ? "Actualizar Gasto" : "Guardar Gasto") <i class="fa-solid fa-check ms-2"></i>
                 </button>
             </div>
@@ -195,16 +187,15 @@
 
         let manualEdits = new Set();
 
-        // NUEVO: Función para atenuar y bloquear al usuario desmarcado
         function actualizarEstadoFila(index, isChecked) {
             const row = montos[index].closest('.participant-row');
             if (isChecked) {
                 row.style.opacity = '1';
                 montos[index].readOnly = false;
             } else {
-                row.style.opacity = '0.5'; // Lo ponemos semitransparente
-                montos[index].readOnly = true; // Bloqueamos la escritura
-                montos[index].value = "0.00"; // Forzamos el cero
+                row.style.opacity = '0.5';
+                montos[index].readOnly = true;
+                montos[index].value = "0.00";
                 montos[index].classList.remove('manual-edit');
             }
         }
@@ -266,7 +257,6 @@
                     }
                 });
             } else {
-                // Si desmarca a todo el mundo, todos a cero
                 checks.forEach((check, index) => {
                     actualizarEstadoFila(index, false);
                 });
@@ -294,7 +284,7 @@
         checks.forEach((check, index) => {
             check.addEventListener('change', () => {
                 if (!check.checked) {
-                    manualEdits.delete(index); // Si lo desmarca, olvidamos su edición manual
+                    manualEdits.delete(index);
                 }
 
                 if(manualEdits.size === 0) repartirEquitativamente();
@@ -303,22 +293,19 @@
         });
 
         btnEqual.addEventListener('click', () => {
-            // Al dar al botón de resetear, marcamos a todos por defecto
             checks.forEach(c => c.checked = true);
             repartirEquitativamente();
         });
 
-        // --- INICIALIZACIÓN AL CARGAR LA PÁGINA ---
         actualizarDivisas();
 
-        // Pinta correctamente a los que ya estuvieran desmarcados al editar
         checks.forEach((check, index) => {
             actualizarEstadoFila(index, check.checked);
         });
 
         @if (!esEdicion)
         {
-                <text>repartirEquitativamente();</text>
+                    <text>repartirEquitativamente();</text>
         }
     </script>
 }

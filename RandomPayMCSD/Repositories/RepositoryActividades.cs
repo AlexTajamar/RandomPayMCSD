@@ -17,6 +17,8 @@ namespace RandomPayMCSD.Repositories
         public async Task<List<Actividad>> GetByUsuarioIdAsync(int usuarioId)
         {
             return await _context.Actividades
+                .Include(a => a.Gastos) // <-- AÑADIDO: Extrae los gastos para poder sumarlos
+                .Include(a => a.Participantes) // <-- AÑADIDO: Útil para ver cuánta gente hay
                 .Where(a => a.Participantes.Any(p => p.IDUSUARIO == usuarioId))
                 .ToListAsync();
         }

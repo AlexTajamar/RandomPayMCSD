@@ -3,6 +3,7 @@ using RandomPayMCSD.Extensions;
 using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
+using System.Globalization;
 
 namespace RandomPayMCSD.Controllers
 {
@@ -104,25 +105,29 @@ namespace RandomPayMCSD.Controllers
             return View(divisas);
         }
         [HttpPost]
-        public async Task<IActionResult> Divisas(double? importe, string origen, string destino)
+        public async Task<IActionResult> Divisas(string importeString, string origen, string destino)
         {
             // Cargamos siempre las divisas para los selects de la vista
             var divisas = await this.repoDivisas.GetDivisasAsync();
 
-            if (importe != null && importe > 0)
+            if (!string.IsNullOrWhiteSpace(importeString))
             {
-                var dOrigen = await this.repoDivisas.GetDivisaByCodigoAsync(origen);
-                var dDestino = await this.repoDivisas.GetDivisaByCodigoAsync(destino);
-
-                if (dOrigen != null && dDestino != null)
+                // Parseo robusto de decimales (igual que haces en los Gastos)
+                if (double.TryParse(importeString.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double importeParseado) && importeParseado > 0)
                 {
-                    // Fórmula: (Importe / Tasa de Origen) * Tasa de Destino
-                    double resultado = (importe.Value / dOrigen.Tasa) * dDestino.Tasa;
+                    var dOrigen = await this.repoDivisas.GetDivisaByCodigoAsync(origen);
+                    var dDestino = await this.repoDivisas.GetDivisaByCodigoAsync(destino);
 
-                    ViewBag.Importe = importe;
-                    ViewBag.Origen = origen;
-                    ViewBag.Destino = destino;
-                    ViewBag.Resultado = Math.Round(resultado, 2);
+                    if (dOrigen != null && dDestino != null)
+                    {
+                        // Fórmula: (Importe / Tasa de Origen) * Tasa de Destino
+                        double resultado = (importeParseado / dOrigen.Tasa) * dDestino.Tasa;
+
+                        ViewBag.Importe = importeParseado;
+                        ViewBag.Origen = origen;
+                        ViewBag.Destino = destino;
+                        ViewBag.Resultado = Math.Round(resultado, 2);
+                    }
                 }
             }
 

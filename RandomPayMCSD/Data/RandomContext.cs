@@ -13,6 +13,7 @@ namespace RandomPayMCSD.Data
         public DbSet<Gasto> Gastos { get; set; }
         public DbSet<Divisa> Divisas { get; set; }
         public DbSet<RepartoGasto> RepartosGasto { get; set; }
+        public DbSet<ItemCompra> ItemsCompra { get; set; }
     }
     
 

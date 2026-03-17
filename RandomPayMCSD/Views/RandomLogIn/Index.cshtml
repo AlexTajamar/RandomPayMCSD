@@ -11,9 +11,20 @@
             <p class="text-muted">Comparte gastos fácilmente</p>
         </div>
 
+        @* Mensaje de error de credenciales *@
         @if (!string.IsNullOrEmpty(mensaje))
         {
-            <div class="alert alert-danger rounded-4 fw-bold">@mensaje</div>
+            <div class="alert alert-danger rounded-4 fw-bold text-center">
+                @mensaje
+            </div>
+        }
+
+        @* Mensaje de éxito al venir de registrarse o de cambiar la contraseña *@
+        @if (TempData["MENSAJE_EXITO"] != null)
+        {
+            <div class="alert alert-success rounded-4 fw-bold text-center" style="background-color: #ecfdf5; border-color: #10b981; color: #065f46;">
+                <i class="fa-solid fa-check-circle me-1"></i> @TempData["MENSAJE_EXITO"]
+            </div>
         }
 
         <form method="post">
@@ -22,13 +33,19 @@
                 <input type="email" name="email" class="form-control custom-input" required autofocus />
             </div>
             <div class="mb-4">
-                <label class="form-label fw-bold text-muted small">CONTRASEÑA</label>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-bold text-muted small mb-0">CONTRASEÑA</label>
+                    <a asp-controller="RandomLogIn" asp-action="ForgotPassword" class="text-primary text-decoration-none small fw-semibold">
+                        ¿Has olvidado tu contraseña?
+                    </a>
+                </div>
                 <input type="password" name="password" class="form-control custom-input" required />
             </div>
             <button type="submit" class="btn-primary-custom w-100 py-3">Iniciar sesión</button>
         </form>
+
         <p class="text-center mt-4 text-muted small fw-semibold">
-            ¿No tienes cuenta? <a href="#" class="text-primary text-decoration-none">Regístrate</a> (próximamente)
+            ¿No tienes cuenta? <a asp-controller="RandomLogIn" asp-action="Register" class="text-primary text-decoration-none">Regístrate aquí</a>
         </p>
     </div>
 </div>

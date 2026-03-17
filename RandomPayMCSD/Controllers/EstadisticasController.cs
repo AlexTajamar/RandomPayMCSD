@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization; // <--- AÑADIDO
+using Microsoft.AspNetCore.Mvc;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Controllers
 {
+    [Authorize] // <--- BLINDAJE APLICADO
     public class EstadisticasController : Controller
     {
         private readonly IRepositoryActividades _repoActividades;
@@ -28,7 +30,6 @@ namespace RandomPayMCSD.Controllers
             var actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
             if (actividad == null) return RedirectToAction("Index", "Statics");
 
-            // 1. Datos para el gráfico: ¿Quién ha pagado más? (Gasto total por persona)
             var participantes = await _repoParticipantes.GetByActividadIdAsync(idActividad);
             var gastos = await _repoGastos.GetByActividadIdAsync(idActividad);
 
@@ -37,7 +38,6 @@ namespace RandomPayMCSD.Controllers
                 (double)gastos.Where(g => g.IDPAGADOR == p.IDPARTICIPANTE).Sum(g => g.IMPORTE)
             ).ToList();
 
-            // 2. Datos de Balance Actual (lo que deben o les deben ahora mismo)
             var balances = await _balanceService.GetBalancesActividadAsync(idActividad);
             var nombresBalance = balances.Select(b => b.Participante).ToList();
             var montosBalance = balances.Select(b => b.Debe).ToList();

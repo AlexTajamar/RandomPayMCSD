@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "Registro";
+}
+
+<div class="container mt-5 d-flex justify-content-center">
+    <div class="clean-card" style="max-width: 400px; width: 100%;">
+        <h3 class="fw-bold text-center mb-4 text-primary">Crear Cuenta</h3>
+
+        @if (ViewData["MENSAJE"] != null)
+        {
+            <div class="alert alert-danger rounded-3 fw-bold small">
+                @ViewData["MENSAJE"]
+            </div>
+        }
+
+        <form asp-action="Register" method="post">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">NOMBRE</label>
+                <input type="text" name="nombre" class="form-control custom-input" required autofocus />
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">EMAIL</label>
+                <input type="email" name="email" class="form-control custom-input" required />
+            </div>
+            <div class="mb-4">
+                <label class="form-label small fw-bold text-muted">CONTRASEÑA</label>
+                <input type="password" name="password" class="form-control custom-input" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" style="border-radius: 12px;">
+                Registrarse
+            </button>
+
+            <div class="text-center mt-4">
+                <a asp-action="Index" class="text-muted text-decoration-none small fw-bold">¿Ya tienes cuenta? Inicia sesión</a>
+            </div>
+        </form>
+    </div>
+</div>

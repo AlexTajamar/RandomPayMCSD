@@ -4,6 +4,9 @@ using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Repositories;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Cryptography;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +15,17 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession();
 
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+}).AddCookie(options =>
+{
+    options.LoginPath = "/RandomLogIn/Index";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60); 
+    options.AccessDeniedPath = "/RandomLogIn/ErrorAcceso";
+});
 
 
 string conecctionString = builder.Configuration.GetConnectionString("SqlRandom");
@@ -44,6 +58,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseSession();
 app.UseAuthorization();
+
 
 app.MapStaticAssets();
 

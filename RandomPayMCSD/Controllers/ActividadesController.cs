@@ -1,13 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization; // <--- AÑADIDO
+using Microsoft.AspNetCore.Mvc;
 using RandomPayMCSD.Extensions;
 using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
 using System.Globalization;
+using System.Security.Claims; // <--- AÑADIDO
 
 namespace RandomPayMCSD.Controllers
 {
+    [Authorize] // <--- BLINDAJE APLICADO A TODO EL CONTROLADOR
     public class ActividadesController : Controller
     {
         private readonly IRepositoryActividades _repoActividades;
@@ -15,13 +18,13 @@ namespace RandomPayMCSD.Controllers
         private readonly IRepositoryParticipantes _repoParticipantes;
         private readonly IRepositoryRepartos _repoRepartos;
         private readonly IRepositoryDivisas _repoDivisas;
-        private readonly IRepositoryListaCompra _repoListaCompra; // <--- AÑADIDO
+        private readonly IRepositoryListaCompra _repoListaCompra;
         private readonly BalanceService _balanceService;
         private readonly InvitationService _invitationService;
 
         public ActividadesController(
             IRepositoryActividades repoActividades,
-            IRepositoryListaCompra repoListaCompra, // <--- AÑADIDO
+            IRepositoryListaCompra repoListaCompra,
             IRepositoryGastos repoGastos,
             IRepositoryDivisas repoDivisas,
             IRepositoryParticipantes repoParticipantes,
@@ -36,11 +39,10 @@ namespace RandomPayMCSD.Controllers
             _invitationService = invitationService;
             _repoRepartos = repoRepartos;
             _repoDivisas = repoDivisas;
-            _repoListaCompra = repoListaCompra; // <--- AÑADIDO
+            _repoListaCompra = repoListaCompra;
         }
 
         // --- 1. DETALLE Y GESTIÓN DE ACTIVIDAD ---
-
         public async Task<IActionResult> Detalle(int id)
         {
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
@@ -48,8 +50,6 @@ namespace RandomPayMCSD.Controllers
 
             ViewBag.Balances = await _balanceService.GetBalancesActividadAsync(id);
             ViewBag.Transferencias = await _balanceService.GetTransferenciasAsync(id);
-
-            // ---> ¡FALTABA ESTO! Cargar la lista de la compra de la base de datos
             ViewBag.ListaCompra = await _repoListaCompra.GetByActividadAsync(id);
 
             return View(actividad);
@@ -63,8 +63,9 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> Crear(string nombre, string moneda, List<string> nombresAmigos, IFormFile imagenForm, string emojiForm)
         {
-            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
-            if (user == null) return RedirectToAction("Index", "RandomLogIn");
+            // LEEMOS DESDE LOS CLAIMS EN LUGAR DE LA SESIÓN
+            int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            string nombreUsuario = User.FindFirstValue(ClaimTypes.Name);
 
             string imagenFinal = "✈️";
 
@@ -91,7 +92,7 @@ namespace RandomPayMCSD.Controllers
             {
                 NOMBREACTIVIDAD = nombre,
                 MONEDAPRINCIPAL = moneda ?? "EUR",
-                IDCREADOR = user.IDUSUARIO,
+                IDCREADOR = idUsuario,
                 FECHACREACION = DateTime.Now,
                 INVITACIONCOD = _invitationService.GenerarCodigoUnico(),
                 IMAGEN = imagenFinal
@@ -101,8 +102,8 @@ namespace RandomPayMCSD.Controllers
             Participante creadorParticipante = new Participante
             {
                 IDACTIVIDAD = nuevaActividad.IDACTIVIDAD,
-                NOMBREPARTICIPANTE = user.NOMBRE,
-                IDUSUARIO = user.IDUSUARIO
+                NOMBREPARTICIPANTE = nombreUsuario,
+                IDUSUARIO = idUsuario
             };
             await _repoParticipantes.AddAsync(creadorParticipante);
 
@@ -145,7 +146,6 @@ namespace RandomPayMCSD.Controllers
         }
 
         // --- 2. GESTIÓN DE INVITACIONES Y VINCULACIÓN ---
-
         [HttpGet]
         public IActionResult Unirse()
         {
@@ -157,7 +157,7 @@ namespace RandomPayMCSD.Controllers
         {
             if (string.IsNullOrWhiteSpace(codigo)) return View();
 
-            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var actividad = await _repoActividades.GetByCodigoAsync(codigo);
 
             if (actividad == null)
@@ -166,7 +166,7 @@ namespace RandomPayMCSD.Controllers
                 return View();
             }
 
-            if (actividad.Participantes.Any(p => p.IDUSUARIO == user.IDUSUARIO))
+            if (actividad.Participantes.Any(p => p.IDUSUARIO == idUsuario))
             {
                 ViewBag.Error = "Ya estás dentro de esta actividad. Búscala en tu panel de inicio.";
                 return View();
@@ -178,12 +178,12 @@ namespace RandomPayMCSD.Controllers
         [HttpGet]
         public async Task<IActionResult> Vincular(int id)
         {
-            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
 
             if (actividad == null) return RedirectToAction("Index", "Statics");
 
-            if (actividad.Participantes.Any(p => p.IDUSUARIO == user.IDUSUARIO))
+            if (actividad.Participantes.Any(p => p.IDUSUARIO == idUsuario))
             {
                 return RedirectToAction("Detalle", new { id = id });
             }
@@ -195,12 +195,12 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> Vincular(int idActividad, int idParticipante)
         {
-            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             Participante p = await _repoParticipantes.GetByIdAsync(idParticipante);
 
             if (p != null)
             {
-                p.IDUSUARIO = user.IDUSUARIO;
+                p.IDUSUARIO = idUsuario;
                 await _repoParticipantes.UpdateAsync(p);
             }
 
@@ -210,25 +210,23 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> VincularNuevo(int idActividad)
         {
-            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
-            if (user == null) return RedirectToAction("Index", "RandomLogIn");
+            int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            string nombreUsuario = User.FindFirstValue(ClaimTypes.Name);
 
             await _repoParticipantes.AddAsync(new Participante
             {
                 IDACTIVIDAD = idActividad,
-                NOMBREPARTICIPANTE = user.NOMBRE,
-                IDUSUARIO = user.IDUSUARIO
+                NOMBREPARTICIPANTE = nombreUsuario,
+                IDUSUARIO = idUsuario
             });
 
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 3. NUEVOS MÉTODOS: LISTA DE LA COMPRA ---
-
+        // --- 3. LISTA DE LA COMPRA ---
         [HttpPost]
         public async Task<IActionResult> AddItemCompra(int idActividad, string nombreItem, string precioEstimadoStr)
         {
-            // AÑADIDO: Control de valores negativos (estimado >= 0)
             if (double.TryParse(precioEstimadoStr.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double estimado) && estimado >= 0)
             {
                 await _repoListaCompra.AddAsync(new ItemCompra
@@ -249,7 +247,6 @@ namespace RandomPayMCSD.Controllers
         }
 
         // --- 4. GASTOS Y DEUDAS ---
-
         public async Task<IActionResult> AddGasto(int id, int? idItemCompra)
         {
             ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(id);
@@ -330,8 +327,6 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = gastoNormal.IDACTIVIDAD });
         }
 
-        // --- MÉTODOS DE EDICIÓN ---
-
         [HttpGet]
         public async Task<IActionResult> EditGasto(int idGasto)
         {
@@ -395,8 +390,7 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 5. OTROS MÉTODOS (Ruleta, Delete, etc.) ---
-
+        // --- 5. OTROS MÉTODOS ---
         public async Task<IActionResult> Ruleta(int id)
         {
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
@@ -451,9 +445,9 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> AbandonarActividad(int idActividad)
         {
-            Usuario user = HttpContext.Session.getObject<Usuario>("USUARIO_LOGUEADO");
+            int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var participantes = await _repoParticipantes.GetByActividadIdAsync(idActividad);
-            var miParticipante = participantes.FirstOrDefault(p => p.IDUSUARIO == user.IDUSUARIO);
+            var miParticipante = participantes.FirstOrDefault(p => p.IDUSUARIO == idUsuario);
 
             if (miParticipante != null)
             {

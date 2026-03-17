@@ -2,34 +2,93 @@
 @{
     ViewData["Title"] = "RandomPay - La Ruleta";
     string ganador = ViewBag.Ganador as string;
+    var nombresJson = System.Text.Json.JsonSerializer.Serialize(Model ?? new List<string>());
 }
 
-<div class="container mt-5 mb-5 d-flex justify-content-center">
-    <div class="clean-card text-center" style="max-width: 600px; width: 100%; border-top: 6px solid #8b5cf6;">
-        <div class="p-3 mb-3 d-inline-block rounded-circle" style="background-color: #f3e8ff;">
-            <i class="fa-solid fa-dice fa-3x" style="color: #8b5cf6;"></i>
+<style>
+    .bg-dashboard {
+        background-color: #f8fafc;
+        min-height: 100vh;
+    }
+
+    .clean-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        padding: 1.5rem;
+        border: 1px solid #f1f5f9;
+    }
+
+    .roulette-container {
+        position: relative;
+        width: 220px;
+        height: 220px;
+        margin: 0 auto;
+    }
+
+    #canvas-ruleta {
+        width: 100%;
+        height: 100%;
+    }
+
+    .roulette-arrow {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 12px solid transparent;
+        border-right: 12px solid transparent;
+        border-top: 24px solid #ef4444;
+        z-index: 10;
+        filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3));
+    }
+
+    .winner-display {
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .custom-input:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+</style>
+
+<div class="container mt-3 mb-3 d-flex justify-content-center">
+    <div class="clean-card text-center" style="max-width: 550px; width: 100%; border-top: 6px solid #8b5cf6;">
+
+        <div class="p-2 mb-2 d-inline-block rounded-circle" style="background-color: #f3e8ff;">
+            <i class="fa-solid fa-dice fa-2x" style="color: #8b5cf6;"></i>
         </div>
 
-        <h2 class="fw-bold text-dark mb-2">Sorteo RandomPay</h2>
-        <p class="text-muted mb-4">Añade a los amigos y deja que el azar decida quién invita hoy.</p>
+        <h3 class="fw-bold text-dark mb-1">Sorteo RandomPay</h3>
+        <p class="text-muted mb-3 small">El azar decide quién invita hoy.</p>
 
-        <form asp-action="AddNombreRandom" asp-controller="Statics" method="post" class="mb-4">
-            <div class="input-group">
-                <input type="text" name="nombre" class="form-control custom-input" placeholder="Ej: Álex..." required autofocus autocomplete="off" style="border-radius: 12px 0 0 12px;">
-                <button type="submit" class="btn btn-dark px-4" style="border-radius: 0 12px 12px 0;">
-                    <i class="fa-solid fa-plus"></i> Añadir
+        <form asp-action="AddNombreRandom" asp-controller="Statics" method="post" class="mb-3">
+            <div class="input-group shadow-sm">
+                <input type="text" name="nombre" class="form-control custom-input border-end-0 fw-bold"
+                       placeholder="AÑADIR NOMBRE..." required autofocus autocomplete="off"
+                       style="border-radius: 12px 0 0 12px; padding: 0.6rem 1rem; text-transform: uppercase;"
+                       oninput="this.value = this.value.toUpperCase()">
+                <button type="submit" class="btn btn-dark px-4" style="border-radius: 0 12px 12px 0; background-color: #1e293b;">
+                    <i class="fa-solid fa-plus me-1"></i>
                 </button>
             </div>
         </form>
 
-        <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
             @if (Model != null && Model.Any())
             {
                 foreach (var nombre in Model)
                 {
-                    <div class="badge bg-light text-dark border p-2 px-3 rounded-pill d-flex align-items-center">
-                        <span class="fw-semibold fs-6">@nombre</span>
-                        <form asp-action="RemoveNombreRandom" asp-controller="Statics" method="post" class="m-0 p-0 ms-2">
+                    <div class="badge bg-light text-dark border p-1 px-3 rounded-pill d-flex align-items-center">
+                        <span class="fw-semibold" style="font-size: 0.85rem;">@nombre</span>
+                        <form asp-action="RemoveNombreRandom" asp-controller="Statics" method="post" class="ms-2 m-0 p-0">
                             <input type="hidden" name="nombre" value="@nombre" />
                             <button type="submit" class="btn btn-link text-danger p-0 m-0 border-0 text-decoration-none">
                                 <i class="fa-solid fa-xmark"></i>
@@ -40,45 +99,50 @@
             }
             else
             {
-                <span class="text-muted small">No hay participantes todavía. Añade a alguien arriba.</span>
+                <span class="text-muted small italic">Añade a alguien arriba para empezar.</span>
             }
         </div>
 
-        <div class="p-4 rounded-4 mb-4 border" style="background-color: #f8fafc;">
+        <div class="roulette-container mb-2">
+            <div class="roulette-arrow"></div>
+            <canvas id="canvas-ruleta" width="500" height="500"></canvas>
+        </div>
+
+        <div id="resultado-ganador" class="winner-display mb-3" style="opacity: @(string.IsNullOrEmpty(ganador) ? "1" : "0");">
             @if (!string.IsNullOrEmpty(ganador))
             {
-                <div class="fw-bold" style="font-size: 3.5rem; color: #ef4444; word-break: break-all;">@ganador</div>
-                <div class="badge bg-danger mt-2">¡LE TOCA PAGAR!</div>
+                <h2 class="fw-bold text-danger mb-0" style="font-size: 2.5rem; word-break: break-all;">@ganador</h2>
+                <div class="badge bg-danger px-3 py-1 rounded-pill mt-1 small">💸 ¡LE TOCA PAGAR! 💸</div>
             }
             else
             {
-                <div class="fw-bold text-muted" style="font-size: 3.5rem;">?</div>
+                <span class="text-muted fs-4 fw-bold">?</span>
             }
         </div>
 
         @if (Model != null && Model.Count > 1)
         {
-            <form asp-action="SortearRandom" asp-controller="Statics" method="post">
-                <button type="submit" class="btn-primary-custom w-100 py-3 fs-5" style="background-color: #8b5cf6;">
-                    <i class="fa-solid fa-rotate me-2"></i> ¡Girar la Ruleta!
+            <form id="form-sorteo" asp-action="SortearRandom" asp-controller="Statics" method="post">
+                <button type="submit" id="btn-girar" class="btn-primary-custom w-100 py-2 fs-6 border-0 text-white fw-bold" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 12px; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);">
+                    <i class="fa-solid fa-rotate me-2"></i> ¡GIRAR RULETA!
                 </button>
             </form>
         }
         else
         {
-            <button class="btn btn-secondary w-100 py-3 fs-5 rounded-3 fw-bold" disabled>
+            <button class="btn btn-secondary w-100 py-2 fs-6 rounded-3 fw-bold" disabled>
                 <i class="fa-solid fa-rotate me-2"></i> Mínimo 2 personas
             </button>
         }
 
-        <div class="d-flex justify-content-between align-items-center mt-5 pt-3 border-top">
-            <a asp-controller="Statics" asp-action="Index" class="text-decoration-none text-muted fw-bold small">
-                <i class="fa-solid fa-arrow-left me-1"></i> Volver al inicio
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <a asp-controller="Statics" asp-action="Index" class="text-decoration-none text-muted fw-bold" style="font-size: 0.85rem;">
+                <i class="fa-solid fa-arrow-left me-1"></i> Inicio
             </a>
             @if (Model != null && Model.Any())
             {
                 <form asp-action="ResetRandom" asp-controller="Statics" method="post">
-                    <button type="submit" class="btn btn-link text-danger text-decoration-none p-0 fw-bold small">
+                    <button type="submit" class="btn btn-link text-danger text-decoration-none p-0 fw-bold" style="font-size: 0.85rem;">
                         <i class="fa-solid fa-trash-can me-1"></i> Limpiar lista
                     </button>
                 </form>
@@ -86,3 +150,78 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        const nombres = @Html.Raw(nombresJson);
+        const ganador = '@Html.Raw(ganador ?? "")';
+        const canvas = document.getElementById('canvas-ruleta');
+        const ctx = canvas.getContext('2d');
+
+        // NUEVA PALETA DE 8 COLORES DE ALTO CONTRASTE
+        const colores = [
+            '#8b5cf6', // Púrpura (Original)
+            '#f97316', // Naranja
+            '#0ea5e9', // Azul Cielo
+            '#eab308', // Amarillo
+            '#22c55e', // Verde
+            '#ec4899', // Rosa
+            '#14b8a6', // Teal
+            '#a3e635'  // Lima
+        ];
+
+        function dibujarRuleta() {
+            if (nombres.length === 0) return;
+            const tamArco = (2 * Math.PI) / nombres.length;
+
+            nombres.forEach((nombre, i) => {
+                const angulo = i * tamArco;
+                ctx.beginPath();
+                ctx.fillStyle = colores[i % colores.length];
+                ctx.moveTo(250, 250);
+                ctx.arc(250, 250, 240, angulo, angulo + tamArco);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(250, 250);
+                ctx.rotate(angulo + tamArco / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "white";
+                ctx.font = "bold 24px Inter";
+                ctx.fillText(nombre, 220, 10);
+                ctx.restore();
+            });
+        }
+
+        dibujarRuleta();
+
+        if (ganador !== '') {
+            const index = nombres.indexOf(ganador);
+            if (index !== -1) {
+                const gradosPorSeccion = 360 / nombres.length;
+                const centroSeccion = (index * gradosPorSeccion) + (gradosPorSeccion / 2);
+                const rotacionFinal = 270 - centroSeccion + (360 * 5);
+
+                setTimeout(() => {
+                    canvas.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+                    canvas.style.transform = `rotate(${rotacionFinal}deg)`;
+                }, 50);
+
+                setTimeout(() => {
+                    const resultadoDiv = document.getElementById('resultado-ganador');
+                    resultadoDiv.style.transition = 'opacity 0.5s ease-in';
+                    resultadoDiv.style.opacity = '1';
+                }, 4050);
+            }
+        }
+
+        const btnGirar = document.getElementById('btn-girar');
+        if (btnGirar) {
+            document.getElementById('form-sorteo').addEventListener('submit', function() {
+                btnGirar.disabled = true;
+                btnGirar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i> Girando...';
+            });
+        }
+    </script>
+}

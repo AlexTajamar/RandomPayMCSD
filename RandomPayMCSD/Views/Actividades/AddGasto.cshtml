@@ -1,6 +1,5 @@
 ﻿@model RandomPayMCSD.Models.Gasto
 @{
-    // Esta vista servirá tanto para Crear como para Editar
     bool esEdicion = Model.IDGASTO > 0;
     ViewData["Title"] = esEdicion ? "Editar Gasto" : "Añadir Gasto";
 
@@ -12,33 +11,40 @@
 }
 
 <style>
+    .bg-dashboard {
+        background-color: #f8fafc;
+        min-height: 100vh;
+    }
+
+    .clean-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        padding: 1.5rem;
+        border: 1px solid #f1f5f9;
+    }
+
     .participant-row {
         background: #f8fafc;
-        border-radius: 12px;
-        padding: 15px 20px;
-        margin-bottom: 12px;
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin-bottom: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         border: 1px solid #e2e8f0;
-        transition: all 0.2s;
     }
 
-        .participant-row:hover {
-            border-color: #cbd5e1;
-            background: #f1f5f9;
-        }
-
     .amount-input {
-        width: 120px;
+        width: 100px;
         text-align: right;
         border: 2px solid transparent;
         background: transparent;
         font-weight: bold;
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: #1e293b;
-        padding: 5px;
-        border-radius: 8px;
+        padding: 3px;
+        border-radius: 6px;
     }
 
         .amount-input:focus {
@@ -48,134 +54,137 @@
         }
 
         .amount-input.manual-edit {
-            color: #3b82f6; /* Azul si fue editado manualmente */
+            color: #3b82f6;
         }
+
+    .btn-primary-custom {
+        background: #2563eb;
+        color: white;
+        border-radius: 10px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        border: none;
+    }
 </style>
 
-<div class="container mt-4 mb-5 max-w-4xl">
-    <div class="clean-card">
-        <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
-            <div class="p-3 rounded-circle bg-primary bg-opacity-10 me-3">
-                <i class="fa-solid @(esEdicion ? "fa-pen" : "fa-receipt") fa-2x text-primary"></i>
+<div class="bg-dashboard pt-3">
+    <div class="container max-w-4xl">
+        <div class="clean-card">
+
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <div class="p-2 rounded-circle bg-primary bg-opacity-10 me-3">
+                    <i class="fa-solid @(esEdicion ? "fa-pen" : "fa-receipt") fs-4 text-primary"></i>
+                </div>
+                <h4 class="fw-bold mb-0 text-dark">@(esEdicion ? "Editar Gasto" : "Añadir Gasto")</h4>
             </div>
-            <h2 class="fw-bold mb-0 text-dark">@(esEdicion ? "Editar Gasto" : "Detalle del Gasto")</h2>
-        </div>
 
-        <form asp-action="@(esEdicion ? "EditGasto" : "AddGasto")" method="post">
+            <form asp-action="@(esEdicion ? "EditGasto" : "AddGasto")" method="post">
+                <input type="hidden" asp-for="IDACTIVIDAD" />
+                @if (esEdicion)
+                {
+                    <input type="hidden" asp-for="IDGASTO" />
+                    <input type="hidden" asp-for="FECHA" />
+ }
 
-            <input type="hidden" asp-for="IDACTIVIDAD" />
-            @if (esEdicion)
-            {
-                <input type="hidden" asp-for="IDGASTO" />
-                <input type="hidden" asp-for="FECHA" />
-            }
+                @if (ViewBag.IdItemCompra != null)
+                {
+                    <input type="hidden" name="idItemCompra" value="@ViewBag.IdItemCompra" />
+                    <div class="alert alert-success fw-bold rounded-3 mb-3 py-2 d-flex align-items-center" style="background-color: #ecfdf5; border: 1px solid #10b981; color: #065f46;">
+                        <i class="fa-solid fa-cart-circle-check fs-4 me-2 text-success"></i>
+                        <div><h6 class="fw-bold mb-0" style="font-size:0.9rem">Confirmando compra</h6></div>
+                    </div>
+                }
 
-            @* NUEVO: Si venimos de la lista de la compra *@
-            @if (ViewBag.IdItemCompra != null)
-            {
-                <input type="hidden" name="idItemCompra" value="@ViewBag.IdItemCompra" />
-                <div class="alert alert-success fw-bold rounded-4 mb-4 d-flex align-items-center" style="background-color: #ecfdf5; border: 2px solid #10b981; color: #065f46;">
-                    <i class="fa-solid fa-cart-circle-check fa-2x me-3 text-success"></i>
-                    <div>
-                        <h6 class="fw-bold mb-1">Confirmando compra de la lista</h6>
-                        <span class="small fw-normal">Ajusta el importe total si el precio real ha sido diferente al estimado.</span>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label small text-muted fw-bold mb-1">CONCEPTO</label>
+                        <input type="text" asp-for="CONCEPTO" class="form-control custom-input py-1" placeholder="Ej: Cena..." required>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label small text-muted fw-bold mb-1">TOTAL</label>
+                        <input type="number" step="0.01" name="importeString" id="totalInput" class="form-control custom-input fs-5 fw-bold text-primary py-1"
+                               value="@(Model.IMPORTE > 0 ? Model.IMPORTE.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted fw-bold mb-1">MONEDA</label>
+                        <select name="divisaSeleccionada" id="divisaSelect" class="form-select custom-input py-1">
+                            @if (divisas != null)
+                            {
+                                @foreach (var d in divisas)
+                                {
+                                    <option value="@d.Codigo" selected="@(d.Codigo == "EUR")">@d.Codigo</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted fw-bold mb-1">PAGADOR</label>
+                        <select asp-for="IDPAGADOR" class="form-select custom-input py-1" required>
+                            @if (participantes != null)
+                            {
+                                @foreach (var p in participantes)
+                                {
+                                    <option value="@p.IDPARTICIPANTE">@p.NOMBREPARTICIPANTE</option>
+                                }
+                            }
+                        </select>
                     </div>
                 </div>
-            }
 
-            <div class="row g-4 mb-4">
-                <div class="col-md-12">
-                    <label class="form-label small text-muted fw-bold">CONCEPTO</label>
-                    <input type="text" asp-for="CONCEPTO" class="form-control custom-input" placeholder="Ej: Cena en el centro..." required>
+                <div id="conversionInfo" class="alert alert-info py-1 px-3 mb-3 small" style="display:none; font-weight: 500;">
+                    <i class="fa-solid fa-arrow-right-arrow-left me-2"></i> Eqv. <span id="conversionResult" class="fw-bold">0</span> EUR
                 </div>
 
-                <div class="col-md-8">
-                    <label class="form-label small text-muted fw-bold">IMPORTE TOTAL</label>
-                    <input type="number" step="0.01" name="importeString" id="totalInput" class="form-control custom-input fs-4 fw-bold text-primary"
-                           value="@(Model.IMPORTE > 0 ? Model.IMPORTE.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")" required>
-                </div>
+                <div class="p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-dark mb-0">División</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" id="btnEqual">
+                            <i class="fa-solid fa-scale-balanced me-1"></i> Partes Iguales
+                        </button>
+                    </div>
 
-                <div class="col-md-4">
-                    <label class="form-label small text-muted fw-bold">MONEDA</label>
-                    <select name="divisaSeleccionada" id="divisaSelect" class="form-select custom-input">
-                        @if (divisas != null)
+                    <div id="participantsList" style="max-height: 250px; overflow-y: auto;">
+                        @if (participantes != null)
                         {
-                            @foreach (var d in divisas)
+                            for (int i = 0; i < participantes.Count; i++)
                             {
-                                <option value="@d.Codigo" selected="@(d.Codigo == "EUR")">@d.Codigo</option>
+                                var p = participantes[i];
+                                var rep = repartosExistentes?.FirstOrDefault(r => r.IdParticipante == p.IDPARTICIPANTE);
+                                double valor = rep?.Cantidad ?? 0;
+                                bool marcado = esEdicion ? (rep != null) : true;
+
+                                <div class="participant-row py-1">
+                                    <div class="d-flex align-items-center">
+                                        <input type="hidden" name="idsParticipantes" value="@p.IDPARTICIPANTE" />
+                                        <div class="form-check form-switch me-2 mb-0">
+                                            <input class="form-check-input check-participante" type="checkbox" role="switch" @(marcado ? "checked" : "") style="cursor: pointer;">
+                                        </div>
+                                        <span class="fw-semibold text-dark" style="font-size: 0.95rem;">@p.NOMBREPARTICIPANTE</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <input type="number" step="0.01" name="cantidadesAsignadas" class="amount-input participante-monto" value="@valor.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                        <span class="ms-1 text-muted small fw-bold divisa-label">EUR</span>
+                                    </div>
+                                </div>
                             }
                         }
-                    </select>
+                    </div>
                 </div>
-            </div>
 
-            <div id="conversionInfo" class="alert alert-info py-2 mb-4" style="display:none; font-weight: 500;">
-                <i class="fa-solid fa-arrow-right-arrow-left me-2"></i> Equivalente a <span id="conversionResult" class="fw-bold">0</span> EUR
-            </div>
-
-            <div class="mb-5">
-                <label class="form-label small text-muted fw-bold">¿QUIÉN ADELANTÓ EL DINERO?</label>
-                <select asp-for="IDPAGADOR" class="form-select custom-input" required>
-                    @if (participantes != null)
-                    {
-                        @foreach (var p in participantes)
-                        {
-                            <option value="@p.IDPARTICIPANTE">@p.NOMBREPARTICIPANTE</option>
-                        }
-                    }
-                </select>
-            </div>
-
-            <div class="p-4 bg-light rounded-4 border">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold text-dark mb-0">¿Cómo se divide?</h5>
-                    <button type="button" class="btn btn-outline-primary rounded-pill px-4 fw-bold" id="btnEqual">
-                        <i class="fa-solid fa-scale-balanced me-2"></i> Restaurar Partes Iguales
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <a asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-sm btn-light border py-2 px-4 fw-bold">Cancelar</a>
+                    <button type="submit" class="btn btn-sm btn-primary-custom py-2 px-4 fw-bold shadow-sm">
+                        @(esEdicion ? "Actualizar" : "Guardar") <i class="fa-solid fa-check ms-1"></i>
                     </button>
                 </div>
-
-                <div id="participantsList">
-                    @if (participantes != null)
-                    {
-                        for (int i = 0; i < participantes.Count; i++)
-                        {
-                            var p = participantes[i];
-                            var repartoPrevio = repartosExistentes?.FirstOrDefault(r => r.IdParticipante == p.IDPARTICIPANTE);
-                            double valorMonto = repartoPrevio?.Cantidad ?? 0;
-                            bool estaMarcado = esEdicion ? (repartoPrevio != null) : true;
-
-                            <div class="participant-row">
-                                <div class="d-flex align-items-center">
-                                    <input type="hidden" name="idsParticipantes" value="@p.IDPARTICIPANTE" />
-                                    <div class="form-check form-switch me-3">
-                                        <input class="form-check-input check-participante" type="checkbox" role="switch" @(estaMarcado ? "checked" : "") style="cursor: pointer; width: 2.5em; height: 1.25em;">
-                                    </div>
-                                    <span class="fw-bold text-dark fs-5">@p.NOMBREPARTICIPANTE</span>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <input type="number" step="0.01" name="cantidadesAsignadas" class="amount-input participante-monto"
-                                           value="@valorMonto.ToString(System.Globalization.CultureInfo.InvariantCulture)">
-                                    <span class="ms-2 text-muted fw-bold divisa-label">EUR</span>
-                                </div>
-                            </div>
-                        }
-                    }
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-end gap-3 mt-4">
-                <a asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light border py-3 px-5 fw-bold" style="border-radius: 12px;">
-                    Cancelar
-                </a>
-                <button type="submit" class="btn-primary-custom py-3 px-5 fw-bold shadow-sm" style="border-radius: 12px;">
-                    @(esEdicion ? "Actualizar Gasto" : "Guardar Gasto") <i class="fa-solid fa-check ms-2"></i>
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
+    @* Mismo JS que ya tenías, no hace falta cambiar la lógica *@
     <script>
         const tasasDB = @Html.Raw(divisasJson ?? "[]");
         const totalInput = document.getElementById('totalInput');
@@ -190,55 +199,38 @@
         function actualizarEstadoFila(index, isChecked) {
             const row = montos[index].closest('.participant-row');
             if (isChecked) {
-                row.style.opacity = '1';
-                montos[index].readOnly = false;
+                row.style.opacity = '1'; montos[index].readOnly = false;
             } else {
-                row.style.opacity = '0.5';
-                montos[index].readOnly = true;
-                montos[index].value = "0.00";
-                montos[index].classList.remove('manual-edit');
+                row.style.opacity = '0.5'; montos[index].readOnly = true; montos[index].value = "0.00"; montos[index].classList.remove('manual-edit');
             }
         }
 
         function actualizarDivisas() {
             const moneda = divisaSelect.value;
             labelsMoneda.forEach(l => l.innerText = moneda);
-
             const importe = parseFloat(totalInput.value) || 0;
             const infoDiv = document.getElementById('conversionInfo');
             if(moneda !== 'EUR' && importe > 0) {
                 const tasa = tasasDB.find(t => t.Codigo === moneda)?.Tasa || 1;
                 document.getElementById('conversionResult').innerText = (importe / tasa).toFixed(2);
                 infoDiv.style.display = 'block';
-            } else {
-                infoDiv.style.display = 'none';
-            }
+            } else { infoDiv.style.display = 'none'; }
         }
 
         function recalcularSobrante() {
             const total = parseFloat(totalInput.value) || 0;
-            let sumManual = 0;
-            let autoIndexes = [];
-
+            let sumManual = 0; let autoIndexes = [];
             checks.forEach((check, index) => {
                 actualizarEstadoFila(index, check.checked);
                 if (check.checked) {
-                    if (manualEdits.has(index)) {
-                        sumManual += parseFloat(montos[index].value) || 0;
-                    } else {
-                        autoIndexes.push(index);
-                    }
+                    if (manualEdits.has(index)) sumManual += parseFloat(montos[index].value) || 0;
+                    else autoIndexes.push(index);
                 }
             });
-
             const restante = Math.max(0, total - sumManual);
-
             if (autoIndexes.length > 0) {
                 const porPersona = restante / autoIndexes.length;
-                autoIndexes.forEach(idx => {
-                    montos[idx].value = porPersona.toFixed(2);
-                    montos[idx].classList.remove('manual-edit');
-                });
+                autoIndexes.forEach(idx => { montos[idx].value = porPersona.toFixed(2); montos[idx].classList.remove('manual-edit'); });
             }
         }
 
@@ -246,66 +238,39 @@
             manualEdits.clear();
             const total = parseFloat(totalInput.value) || 0;
             const activos = Array.from(checks).filter(c => c.checked);
-
             if (activos.length > 0) {
                 const porPersona = total / activos.length;
                 checks.forEach((check, index) => {
                     actualizarEstadoFila(index, check.checked);
-                    if (check.checked) {
-                        montos[index].value = porPersona.toFixed(2);
-                        montos[index].classList.remove('manual-edit');
-                    }
+                    if (check.checked) { montos[index].value = porPersona.toFixed(2); montos[index].classList.remove('manual-edit'); }
                 });
-            } else {
-                checks.forEach((check, index) => {
-                    actualizarEstadoFila(index, false);
-                });
-            }
+            } else { checks.forEach((check, index) => actualizarEstadoFila(index, false)); }
         }
 
-        totalInput.addEventListener('input', () => {
-            actualizarDivisas();
-            if(manualEdits.size === 0) repartirEquitativamente();
-            else recalcularSobrante();
-        });
-
+        totalInput.addEventListener('input', () => { actualizarDivisas(); if(manualEdits.size === 0) repartirEquitativamente(); else recalcularSobrante(); });
         divisaSelect.addEventListener('change', actualizarDivisas);
 
         montos.forEach((input, index) => {
             input.addEventListener('input', () => {
-                if (checks[index].checked) {
-                    manualEdits.add(index);
-                    input.classList.add('manual-edit');
-                    recalcularSobrante();
-                }
+                if (checks[index].checked) { manualEdits.add(index); input.classList.add('manual-edit'); recalcularSobrante(); }
             });
         });
 
         checks.forEach((check, index) => {
             check.addEventListener('change', () => {
-                if (!check.checked) {
-                    manualEdits.delete(index);
-                }
-
-                if(manualEdits.size === 0) repartirEquitativamente();
-                else recalcularSobrante();
+                if (!check.checked) manualEdits.delete(index);
+                if(manualEdits.size === 0) repartirEquitativamente(); else recalcularSobrante();
             });
         });
 
-        btnEqual.addEventListener('click', () => {
-            checks.forEach(c => c.checked = true);
-            repartirEquitativamente();
-        });
+        btnEqual.addEventListener('click', () => { checks.forEach(c => c.checked = true); repartirEquitativamente(); });
 
         actualizarDivisas();
-
-        checks.forEach((check, index) => {
-            actualizarEstadoFila(index, check.checked);
-        });
+        checks.forEach((check, index) => actualizarEstadoFila(index, check.checked));
 
         @if (!esEdicion)
         {
-                    <text>repartirEquitativamente();</text>
+            <text>repartirEquitativamente();</text>
         }
     </script>
 }

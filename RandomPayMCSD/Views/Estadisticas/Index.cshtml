@@ -1,74 +1,91 @@
 ﻿@model RandomPayMCSD.Models.Actividad
 @{
     ViewData["Title"] = "Estadísticas - " + Model.NOMBREACTIVIDAD;
-    // Lógica para el Ranking de Deudores (The Wall of Shame)
     var deudores = (ViewBag.MontosBalance as List<double>)
         .Select((monto, index) => new { Nombre = (ViewBag.NombresBalance as List<string>)[index], Saldo = monto })
-        .Where(x => x.Saldo < -0.01) // Filtramos los que deben más de 1 céntimo
-        .OrderBy(x => x.Saldo) // El más negativo (más deudor) primero
+        .Where(x => x.Saldo < -0.01)
+        .OrderBy(x => x.Saldo)
         .ToList();
 }
 
-<div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <a asp-controller="Actividades" asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light border rounded-pill shadow-sm">
-            <i class="fa-solid fa-arrow-left me-2"></i> Volver al grupo
-        </a>
-        <h3 class="fw-bold mb-0">Análisis Visual</h3>
-        <div class="badge bg-primary px-3 py-2 rounded-pill shadow-sm">@Model.MONEDAPRINCIPAL</div>
-    </div>
+<style>
+    .bg-dashboard {
+        background-color: #f8fafc;
+        min-height: 100vh;
+    }
 
-    <div class="row g-4">
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
-                <h5 class="fw-bold text-center mb-4"><i class="fa-solid fa-piggy-bank me-2 text-primary"></i>Inversión Total por Persona</h5>
-                <canvas id="chartGastos"></canvas>
-                <p class="text-muted small text-center mt-3">Suma de todo lo que cada uno ha pagado.</p>
+    .chart-container {
+        position: relative;
+        height: 220px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+</style>
+
+<div class="bg-dashboard pt-3">
+    <div class="container max-w-6xl">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <a asp-controller="Actividades" asp-action="Detalle" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-sm btn-light border rounded-pill shadow-sm px-3 fw-bold">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Volver
+                </a>
+                <h4 class="fw-bold mb-0">Análisis Visual</h4>
             </div>
+            <div class="badge bg-primary px-3 py-1 rounded-pill shadow-sm fs-6">@Model.MONEDAPRINCIPAL</div>
         </div>
 
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
-                <h5 class="fw-bold text-center mb-4"><i class="fa-solid fa-scale-balanced me-2 text-success"></i>Saldos en Tiempo Real</h5>
-                <canvas id="chartBalances"></canvas>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                    <h6 class="fw-bold text-center mb-2"><i class="fa-solid fa-piggy-bank me-2 text-primary"></i>Inversión (Pagado)</h6>
+                    <div class="chart-container">
+                        <canvas id="chartGastos"></canvas>
+                    </div>
+                </div>
+            </div>
 
-                <div class="mt-5 border-top pt-4">
-                    <h6 class="fw-bold text-danger text-uppercase small mb-3">
-                        <i class="fa-solid fa-skull-crossbones me-2"></i>Ranking de Deudores (Wall of Shame)
-                    </h6>
-                    @if (deudores.Any())
-                    {
-                        <div class="d-flex flex-column gap-2">
-                            @for (int i = 0; i < deudores.Count; i++)
-                            {
-                                var d = deudores[i];
-                                <div class="d-flex justify-content-between align-items-center bg-danger bg-opacity-10 p-3 rounded-3 border-start border-danger border-4">
-                                    <div class="d-flex align-items-center">
-                                        <span class="fw-bold me-3 text-danger opacity-50">#@(i + 1)</span>
-                                        <span class="fw-bold text-dark fs-5">@d.Nombre</span>
-                                        @if (i == 0)
-                                        {
-                                            <span class="badge bg-danger ms-2 p-2 shadow-sm animate__animated animate__infinite animate__pulse">
-                                                🚩 EL MÁS RATA
-                                            </span>
-                                        }
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                    <h6 class="fw-bold text-center mb-2"><i class="fa-solid fa-scale-balanced me-2 text-success"></i>Saldos Actuales</h6>
+                    <div class="chart-container mb-3" style="height: 150px;">
+                        <canvas id="chartBalances"></canvas>
+                    </div>
+
+                    <div class="border-top pt-2">
+                        <h6 class="fw-bold text-danger text-uppercase mb-2" style="font-size: 0.8rem;">
+                            <i class="fa-solid fa-skull-crossbones me-1"></i> Ranking Deudores
+                        </h6>
+
+                        @if (deudores.Any())
+                        {
+                            <div class="d-flex flex-column gap-1" style="max-height: 130px; overflow-y: auto;">
+                                @for (int i = 0; i < deudores.Count; i++)
+                                {
+                                    var d = deudores[i];
+                                    <div class="d-flex justify-content-between align-items-center bg-danger bg-opacity-10 py-1 px-2 rounded-2 border-start border-danger border-3">
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-bold me-2 text-danger opacity-50 small">#@(i + 1)</span>
+                                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">@d.Nombre</span>
+                                            @if (i == 0)
+                                            {
+                                                <span class="badge bg-danger ms-2" style="font-size:0.6rem">🚩 MÁS RATA</span>
+                                            }
+                                        </div>
+                                        <span class="text-danger fw-bold" style="font-size: 0.9rem;">@d.Saldo.ToString("N2")</span>
                                     </div>
-                                    <div class="text-end">
-                                        <span class="text-danger fw-bold fs-5 text-nowrap">@d.Saldo.ToString("N2")</span>
-                                        <small class="text-danger d-block" style="font-size: 0.7rem;">@Model.MONEDAPRINCIPAL</small>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="alert alert-success border-0 rounded-4 p-4 text-center">
-                            <i class="fa-solid fa-face-grin-stars fa-3x mb-3 d-block"></i>
-                            <h6 class="fw-bold">¡Cuentas al día!</h6>
-                            <p class="mb-0 small">No hay ninguna rata en este grupo ahora mismo.</p>
-                        </div>
-                    }
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-2">
+                                <i class="fa-solid fa-face-grin-stars fs-4 text-success mb-1 d-block"></i>
+                                <p class="mb-0 fw-bold text-success small">¡Cuentas al día!</p>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -81,7 +98,6 @@
 <script>
     Chart.register(ChartDataLabels);
 
-    // Formateador para números gigantes (1.2M, 45K, etc)
     function formatAbreviado(num) {
         const value = Math.abs(num);
         if (value >= 1.0e+9) return (num / 1.0e+9).toFixed(1) + "B";
@@ -90,7 +106,7 @@
         return num.toFixed(2);
     }
 
-    // 1. Gráfico de Tarta
+    // TARTA
     const ctxGastos = document.getElementById('chartGastos').getContext('2d');
     new Chart(ctxGastos, {
         type: 'doughnut',
@@ -99,29 +115,27 @@
             datasets: [{
                 data: @Html.Raw(Json.Serialize(ViewBag.ValoresPagados)),
                 backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
-                borderWidth: 2,
-                hoverOffset: 25
+                borderWidth: 2, hoverOffset: 10
             }]
         },
         options: {
-            cutout: '65%',
+            maintainAspectRatio: false,
+            cutout: '60%',
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
                 datalabels: {
-                    color: '#fff',
-                    font: { weight: 'bold', size: 12 },
+                    color: '#fff', font: { weight: 'bold', size: 10 },
                     formatter: (value) => formatAbreviado(value),
                     display: (context) => {
                         let sum = context.dataset.data.reduce((a, b) => a + b, 0);
-                        let val = context.dataset.data[context.dataIndex];
-                        return (val / sum) > 0.05; // Solo si representa > 5%
+                        return (context.dataset.data[context.dataIndex] / sum) > 0.05;
                     }
                 }
             }
         }
     });
 
-    // 2. Gráfico de Barras
+    // BARRAS
     const ctxBalances = document.getElementById('chartBalances').getContext('2d');
     const saldosData = @Html.Raw(Json.Serialize(ViewBag.MontosBalance));
 
@@ -132,26 +146,24 @@
             datasets: [{
                 data: saldosData,
                 backgroundColor: saldosData.map(v => v >= 0 ? '#10b981' : '#ef4444'),
-                borderRadius: 10
+                borderRadius: 4
             }]
         },
         options: {
+            maintainAspectRatio: false,
             indexAxis: 'y',
-            responsive: true,
-            layout: { padding: { right: 60 } },
+            layout: { padding: { right: 40 } },
             plugins: {
                 legend: { display: false },
                 datalabels: {
-                    anchor: 'end',
-                    align: 'right',
-                    color: '#444',
-                    font: { weight: 'bold' },
+                    anchor: 'end', align: 'right', color: '#444',
+                    font: { weight: 'bold', size: 10 },
                     formatter: (value) => formatAbreviado(value)
                 }
             },
             scales: {
                 x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
-                y: { grid: { display: false }, border: { display: false } }
+                y: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 } } }
             }
         }
     });

@@ -11,11 +11,6 @@
 }
 
 <style>
-    .bg-dashboard {
-        background-color: #f8fafc;
-        min-height: 100vh;
-    }
-
     .clean-card {
         background: white;
         border-radius: 16px;
@@ -88,7 +83,7 @@
 
                 @if (ViewBag.IdItemCompra != null)
                 {
-                    <input type="hidden" name="idItemCompra" value="@ViewBag.IdItemCompra" />
+                    <input type="hidden" name="idItem Compra" value="@ViewBag.IdItemCompra" />
                     <div class="alert alert-success fw-bold rounded-3 mb-3 py-2 d-flex align-items-center" style="background-color: #ecfdf5; border: 1px solid #10b981; color: #065f46;">
                         <i class="fa-solid fa-cart-circle-check fs-4 me-2 text-success"></i>
                         <div><h6 class="fw-bold mb-0" style="font-size:0.9rem">Confirmando compra</h6></div>
@@ -103,8 +98,8 @@
 
                     <div class="col-md-5">
                         <label class="form-label small text-muted fw-bold mb-1">TOTAL</label>
-                        <input type="number" step="0.01" name="importeString" id="totalInput" class="form-control custom-input fs-5 fw-bold text-primary py-1"
-                               value="@(Model.IMPORTE > 0 ? Model.IMPORTE.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")" required>
+                        <input type="text" inputmode="decimal" name="importeString" id="totalInput" class="form-control custom-input fs-5 fw-bold text-primary py-1"
+                               value="@(Model.IMPORTE > 0 ? Model.IMPORTE.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) : "")" required>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small text-muted fw-bold mb-1">MONEDA</label>
@@ -113,7 +108,14 @@
                             {
                                 @foreach (var d in divisas)
                                 {
-                                    <option value="@d.Codigo" selected="@(d.Codigo == "EUR")">@d.Codigo</option>
+                                    if (d.Codigo == "EUR")
+                                    {
+                                        <option value="@d.Codigo" selected="selected">@d.Codigo</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@d.Codigo">@d.Codigo</option>
+                                    }
                                 }
                             }
                         </select>
@@ -163,7 +165,7 @@
                                         <span class="fw-semibold text-dark" style="font-size: 0.95rem;">@p.NOMBREPARTICIPANTE</span>
                                     </div>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" step="0.01" name="cantidadesAsignadas" class="amount-input participante-monto" value="@valor.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                        <input type="text" inputmode="decimal" name="cantidadesAsignadas" class="amount-input participante-monto" value="@valor.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                         <span class="ms-1 text-muted small fw-bold divisa-label">EUR</span>
                                     </div>
                                 </div>
@@ -196,6 +198,35 @@
 
         let manualEdits = new Set();
 
+        function parseNumeroSeguro(valor) {
+            if (!valor) return 0;
+            let s = valor.toString().trim().replace(/\s/g, '');
+            const lastComma = s.lastIndexOf(',');
+            const lastDot = s.lastIndexOf('.');
+
+            if (lastComma >= 0 && lastDot >= 0) {
+                if (lastComma > lastDot) {
+                    s = s.replace(/\./g, '');
+                    s = s.replace(',', '.');
+                } else {
+                    s = s.replace(/,/g, '');
+                }
+            } else if (lastComma >= 0) {
+                s = s.replace(/\./g, '');
+                s = s.replace(',', '.');
+            } else {
+                s = s.replace(/,/g, '');
+            }
+
+            const parsed = Number(s);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function normalizarInputDecimal(input) {
+            const n = parseNumeroSeguro(input.value);
+            input.value = n > 0 ? n.toFixed(2) : "0.00";
+        }
+
         function actualizarEstadoFila(index, isChecked) {
             const row = montos[index].closest('.participant-row');
             if (isChecked) {
@@ -208,7 +239,7 @@
         function actualizarDivisas() {
             const moneda = divisaSelect.value;
             labelsMoneda.forEach(l => l.innerText = moneda);
-            const importe = parseFloat(totalInput.value) || 0;
+            const importe = parseNumeroSeguro(totalInput.value);
             const infoDiv = document.getElementById('conversionInfo');
             if(moneda !== 'EUR' && importe > 0) {
                 const tasa = tasasDB.find(t => t.Codigo === moneda)?.Tasa || 1;
@@ -218,12 +249,12 @@
         }
 
         function recalcularSobrante() {
-            const total = parseFloat(totalInput.value) || 0;
+            const total = parseNumeroSeguro(totalInput.value);
             let sumManual = 0; let autoIndexes = [];
             checks.forEach((check, index) => {
                 actualizarEstadoFila(index, check.checked);
                 if (check.checked) {
-                    if (manualEdits.has(index)) sumManual += parseFloat(montos[index].value) || 0;
+                    if (manualEdits.has(index)) sumManual += parseNumeroSeguro(montos[index].value);
                     else autoIndexes.push(index);
                 }
             });
@@ -236,7 +267,7 @@
 
         function repartirEquitativamente() {
             manualEdits.clear();
-            const total = parseFloat(totalInput.value) || 0;
+            const total = parseNumeroSeguro(totalInput.value);
             const activos = Array.from(checks).filter(c => c.checked);
             if (activos.length > 0) {
                 const porPersona = total / activos.length;
@@ -248,12 +279,14 @@
         }
 
         totalInput.addEventListener('input', () => { actualizarDivisas(); if(manualEdits.size === 0) repartirEquitativamente(); else recalcularSobrante(); });
+        totalInput.addEventListener('blur', () => normalizarInputDecimal(totalInput));
         divisaSelect.addEventListener('change', actualizarDivisas);
 
         montos.forEach((input, index) => {
             input.addEventListener('input', () => {
                 if (checks[index].checked) { manualEdits.add(index); input.classList.add('manual-edit'); recalcularSobrante(); }
             });
+            input.addEventListener('blur', () => normalizarInputDecimal(input));
         });
 
         checks.forEach((check, index) => {

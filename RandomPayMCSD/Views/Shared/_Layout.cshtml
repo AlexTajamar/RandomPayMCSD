@@ -65,6 +65,11 @@
         }
 
         /* === CLASES GLOBALES UNIFICADAS === */
+        .bg-dashboard {
+            background-color: #f8fafc;
+            min-height: 100%;
+        }
+
         .clean-card {
             background: white;
             border-radius: 20px;
@@ -122,7 +127,6 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item"><a class="nav-link text-white" asp-controller="Statics" asp-action="Index">Inicio</a></li>
-                        <li class="nav-item"><a class="nav-link text-white opacity-75" asp-controller="Statics" asp-action="Privacy">Privacidad</a></li>
                     </ul>
                     <ul class="navbar-nav">
                         @if (currentUser != null)

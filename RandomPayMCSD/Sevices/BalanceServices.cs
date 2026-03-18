@@ -22,6 +22,8 @@ namespace RandomPayMCSD.Services
 
     public class BalanceService
     {
+        private const double TOLERANCIA_CENTIMO = 0.01;
+
         private IRepositoryGastos _repoGastos;
         private IRepositoryParticipantes _repoParticipantes;
         private IRepositoryRepartos _repoRepartos;
@@ -79,10 +81,14 @@ namespace RandomPayMCSD.Services
                 }
             }
 
-            // Redondeamos todo a 2 decimales para que se vea limpio
+            // Redondeamos y normalizamos residuos de +/- 0,01
             foreach (var b in balances)
             {
-                b.Debe = Math.Round(b.Debe, 2);
+                b.Debe = Math.Round(b.Debe, 2, MidpointRounding.AwayFromZero);
+                if (Math.Abs(b.Debe) <= TOLERANCIA_CENTIMO)
+                {
+                    b.Debe = 0;
+                }
             }
 
             // Ordenamos: primero los que tienen saldo positivo (les deben dinero), luego los que deben
@@ -96,8 +102,8 @@ namespace RandomPayMCSD.Services
             var balances = await GetBalancesActividadAsync(idActividad);
 
             // Separamos a los que deben dinero (negativo) y a los que les deben (positivo)
-            var deudores = balances.Where(b => b.Debe < -0.01).OrderBy(b => b.Debe).ToList();
-            var acreedores = balances.Where(b => b.Debe > 0.01).OrderByDescending(b => b.Debe).ToList();
+            var deudores = balances.Where(b => b.Debe < -TOLERANCIA_CENTIMO).OrderBy(b => b.Debe).ToList();
+            var acreedores = balances.Where(b => b.Debe > TOLERANCIA_CENTIMO).OrderByDescending(b => b.Debe).ToList();
 
             List<Transferencia> transferencias = new List<Transferencia>();
             int i = 0; // Índice para recorrer deudores
@@ -112,23 +118,29 @@ namespace RandomPayMCSD.Services
                 double credito = acreedor.Debe;
 
                 // Calculamos cuánto le puede pagar este deudor a este acreedor
-                double aPagar = Math.Min(deuda, credito);
+                double aPagar = Math.Round(Math.Min(deuda, credito), 2, MidpointRounding.AwayFromZero);
 
-                transferencias.Add(new Transferencia
+                if (aPagar > TOLERANCIA_CENTIMO)
                 {
-                    IdDeudor = deudor.IdParticipante,
-                    NombreDeudor = deudor.Participante,
-                    IdAcreedor = acreedor.IdParticipante,
-                    NombreAcreedor = acreedor.Participante,
-                    Cantidad = Math.Round(aPagar, 2)
-                });
+                    transferencias.Add(new Transferencia
+                    {
+                        IdDeudor = deudor.IdParticipante,
+                        NombreDeudor = deudor.Participante,
+                        IdAcreedor = acreedor.IdParticipante,
+                        NombreAcreedor = acreedor.Participante,
+                        Cantidad = aPagar
+                    });
+                }
 
                 // Ajustamos los saldos temporales para la siguiente iteración
-                deudor.Debe += aPagar;
-                acreedor.Debe -= aPagar;
+                deudor.Debe = Math.Round(deudor.Debe + aPagar, 2, MidpointRounding.AwayFromZero);
+                acreedor.Debe = Math.Round(acreedor.Debe - aPagar, 2, MidpointRounding.AwayFromZero);
 
-                if (Math.Abs(deudor.Debe) < 0.01) i++; // El deudor ya pagó todo lo que debía
-                if (acreedor.Debe < 0.01) j++; // El acreedor ya cobró todo lo que le debían
+                if (Math.Abs(deudor.Debe) <= TOLERANCIA_CENTIMO) deudor.Debe = 0;
+                if (Math.Abs(acreedor.Debe) <= TOLERANCIA_CENTIMO) acreedor.Debe = 0;
+
+                if (deudor.Debe == 0) i++; // El deudor ya pagó todo lo que debía
+                if (acreedor.Debe == 0) j++; // El acreedor ya cobró todo lo que le debían
             }
 
             return transferencias;

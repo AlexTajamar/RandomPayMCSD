@@ -102,6 +102,15 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> Register(string nombre, string email, string password)
         {
+            nombre = nombre?.Trim();
+            email = email?.Trim().ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            {
+                ViewData["MENSAJE"] = "Debes rellenar nombre, email y contraseña.";
+                return View();
+            }
+
             Usuario existe = await this.repo.GetByEmailAsync(email);
             if (existe != null)
             {
@@ -109,31 +118,49 @@ namespace RandomPayMCSD.Controllers
                 return View();
             }
 
-            Usuario nuevoUsuario = new Usuario
+            using var tx = await this.context.Database.BeginTransactionAsync();
+            try
             {
-                NOMBRE = nombre,
-                EMAIL = email,
-                PASSWORD = password, // Guardado en texto plano temporalmente para tus pruebas
-                ROL = "USER"
-            };
+                Usuario nuevoUsuario = new Usuario
+                {
+                    NOMBRE = nombre,
+                    EMAIL = email,
+                    PASSWORD = password, // Guardado en texto plano temporalmente para tus pruebas
+                    ROL = "USER"
+                };
 
-            await this.repo.AddAsync(nuevoUsuario);
+                await this.repo.AddAsync(nuevoUsuario);
 
-            string salt = HelperTools.GenerateSalt();
-            byte[] hash = HelperCryptography.EncryptPassword(password, salt);
+                string salt = HelperTools.GenerateSalt();
+                byte[] hash = HelperCryptography.EncryptPassword(password, salt);
 
-            SeguridadUsuario seguridad = new SeguridadUsuario
+                SeguridadUsuario seguridad = new SeguridadUsuario
+                {
+                    IdUsuario = nuevoUsuario.IDUSUARIO,
+                    Salt = salt,
+                    PasswordHash = hash
+                };
+
+                await this.context.SeguridadUsuarios.AddAsync(seguridad);
+                await this.context.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                TempData["MENSAJE_EXITO"] = "Cuenta creada correctamente. ¡Inicia sesión!";
+                return RedirectToAction("Index");
+            }
+            catch (DbUpdateException)
             {
-                IdUsuario = nuevoUsuario.IDUSUARIO,
-                Salt = salt,
-                PasswordHash = hash
-            };
-
-            await this.context.SeguridadUsuarios.AddAsync(seguridad);
-            await this.context.SaveChangesAsync();
-
-            TempData["MENSAJE_EXITO"] = "Cuenta creada correctamente. ¡Inicia sesión!";
-            return RedirectToAction("Index");
+                await tx.RollbackAsync();
+                ViewData["MENSAJE"] = "No se pudo completar el registro por un problema de base de datos.";
+                return View();
+            }
+            catch (Exception)
+            {
+                await tx.RollbackAsync();
+                ViewData["MENSAJE"] = "No se pudo completar el registro. Inténtalo de nuevo.";
+                return View();
+            }
         }
 
         // --- FORGOT PASSWORD ---

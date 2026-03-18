@@ -11,6 +11,9 @@
     var miParticipanteLogueado = Model.Participantes.FirstOrDefault(p => p.IDUSUARIO == currentUser?.IDUSUARIO);
     int miId = miParticipanteLogueado?.IDPARTICIPANTE ?? 0;
 
+    string mensajeWhatsapp = $"¡Únete a mi grupo de gastos en RandomPay! Introduce el código: {Model.INVITACIONCOD} para entrar.";
+    string urlWhatsapp = $"https://wa.me/?text={Uri.EscapeDataString(mensajeWhatsapp)}";
+
     decimal miGastoReal = 0;
     if (Model.Gastos != null)
     {
@@ -27,14 +30,7 @@
     var maxBalance = balances?.OrderByDescending(b => b.Debe).FirstOrDefault();
     bool soyElMaximoGastador = maxBalance != null && maxBalance.Participante == miParticipanteLogueado?.NOMBREPARTICIPANTE && maxBalance.Debe > 0.01;
 }
-
 <style>
-    .bg-dashboard {
-        background-color: #f8fafc;
-        min-height: 100vh;
-        padding-bottom: 3rem;
-    }
-
     .clean-card {
         background: white;
         border-radius: 20px;
@@ -101,6 +97,22 @@
 <div class="bg-dashboard pt-4">
     <div class="container max-w-6xl">
 
+        @if (TempData["EXITO_CORREO"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-check-circle me-2"></i>@TempData["EXITO_CORREO"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+        }
+
+        @if (TempData["ERROR_CORREO"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-exclamation-circle me-2"></i>@TempData["ERROR_CORREO"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+        }
+
         @* ENCABEZADO *@
         <div class="d-flex justify-content-between align-items-center mb-5">
             <div class="d-flex align-items-center">
@@ -125,8 +137,11 @@
                             </button>
                         </form>
 
-                        <div class="bg-warning bg-opacity-10 border border-warning border-opacity-25 px-3 py-1 rounded-pill">
+                        <div class="bg-warning bg-opacity-10 border border-warning border-opacity-25 px-3 py-1 rounded-pill d-flex align-items-center gap-2">
                             <span class="text-warning-emphasis small fw-bold">CÓDIGO: @Model.INVITACIONCOD</span>
+                            <a href="@urlWhatsapp" target="_blank" rel="noopener noreferrer" class="text-success text-decoration-none" title="Compartir por WhatsApp">
+                                <i class="fa-brands fa-whatsapp"></i>
+                            </a>
                         </div>
                     </div>
                     <span class="text-muted small fw-semibold"><i class="fa-solid fa-coins me-1"></i> Moneda Base: @Model.MONEDAPRINCIPAL</span>
@@ -310,7 +325,17 @@
                             <h6 class="fw-bold text-primary small mt-3">TE DEBEN INGRESAR:</h6>
                             @foreach (var t in meDeben)
                             {
-                                <div class="bg-primary bg-opacity-10 p-3 rounded-4 mb-1 small text-dark border border-primary border-opacity-25"><b>@t.NombreDeudor</b> te debe @t.Cantidad.ToString("N2")</div>
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-4 mb-1 small text-dark border border-primary border-opacity-25 d-flex justify-content-between align-items-center">
+                                <span><b>@t.NombreDeudor</b> te debe @t.Cantidad.ToString("N2")</span>
+                                <form asp-action="SendDebtReminderEmail" method="post" style="margin: 0;">
+                                    <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                                    <input type="hidden" name="idDeudor" value="@t.IdDeudor" />
+                                    <input type="hidden" name="idAcreedor" value="@t.IdAcreedor" />
+                                    <button type="submit" class="btn btn-sm btn-link text-primary p-0 border-0" title="Enviar recordatorio de deuda">
+                                        <i class="fa-solid fa-envelope"></i>
+                                    </button>
+                                </form>
+                            </div>
                             }
                         }
                         @if (otras.Any())

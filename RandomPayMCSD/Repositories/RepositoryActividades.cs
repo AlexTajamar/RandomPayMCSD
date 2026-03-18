@@ -80,5 +80,10 @@ namespace RandomPayMCSD.Repositories
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<Usuario> GetUsuarioByIdAsync(int usuarioId)
+        {
+            return await _context.Usuarios.FirstOrDefaultAsync(u => u.IDUSUARIO == usuarioId);
+        }
     }
 }

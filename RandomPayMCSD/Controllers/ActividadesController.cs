@@ -1,11 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization; // <--- AÑADIDO
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration; // NUEVO using
 using RandomPayMCSD.Extensions;
 using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
 using System.Globalization;
+using System.Net;
+using System.Net.Mail;
 using System.Security.Claims; // <--- AÑADIDO
 
 namespace RandomPayMCSD.Controllers
@@ -21,7 +24,8 @@ namespace RandomPayMCSD.Controllers
         private readonly IRepositoryListaCompra _repoListaCompra;
         private readonly BalanceService _balanceService;
         private readonly InvitationService _invitationService;
-
+        private readonly IConfiguration _config;  // NUEVA LÍNEA
+        private readonly ILogger<ActividadesController> _logger;   
         public ActividadesController(
             IRepositoryActividades repoActividades,
             IRepositoryListaCompra repoListaCompra,
@@ -30,7 +34,9 @@ namespace RandomPayMCSD.Controllers
             IRepositoryParticipantes repoParticipantes,
             IRepositoryRepartos repoRepartos,
             BalanceService balanceService,
-            InvitationService invitationService)
+            InvitationService invitationService,
+            IConfiguration config,
+            ILogger<ActividadesController> logger)
         {
             _repoActividades = repoActividades;
             _repoGastos = repoGastos;
@@ -40,6 +46,8 @@ namespace RandomPayMCSD.Controllers
             _repoRepartos = repoRepartos;
             _repoDivisas = repoDivisas;
             _repoListaCompra = repoListaCompra;
+            _config = config;
+            _logger = logger;
         }
 
         // --- 1. DETALLE Y GESTIÓN DE ACTIVIDAD ---
@@ -271,21 +279,15 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> AddGasto(Gasto gastoNormal, string importeString, string divisaSeleccionada, List<int> idsParticipantes, List<string> cantidadesAsignadas, int? idItemCompra)
         {
-            if (!string.IsNullOrWhiteSpace(importeString))
-            {
-                if (double.TryParse(importeString.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double totalParseado))
-                {
-                    gastoNormal.IMPORTE = Math.Round((decimal)totalParseado, 2);
-                }
-            }
-
-            if (gastoNormal.IMPORTE <= 0)
+            if (!TryParseFlexibleDecimal(importeString, out decimal totalImporte) || totalImporte <= 0)
             {
                 ModelState.AddModelError("IMPORTE", "Importe no válido.");
                 ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(gastoNormal.IDACTIVIDAD);
                 ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
                 return View(gastoNormal);
             }
+
+            gastoNormal.IMPORTE = Math.Round(totalImporte, 2);
 
             if (divisaSeleccionada != "EUR")
             {
@@ -300,13 +302,16 @@ namespace RandomPayMCSD.Controllers
             {
                 for (int i = 0; i < idsParticipantes.Count; i++)
                 {
-                    if (i < cantidadesAsignadas.Count && double.TryParse(cantidadesAsignadas[i].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double valor) && valor > 0)
+                    if (i < cantidadesAsignadas.Count && TryParseFlexibleDecimal(cantidadesAsignadas[i], out decimal valorDecimal) && valorDecimal > 0)
                     {
-                        double valorRedondeado = Math.Round(valor, 2);
+                        double valorRedondeado = (double)Math.Round(valorDecimal, 2);
                         if (divisaSeleccionada != "EUR")
                         {
                             var moneda = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
-                            valorRedondeado = Math.Round(valorRedondeado / moneda.Tasa, 2);
+                            if (moneda != null)
+                            {
+                                valorRedondeado = Math.Round(valorRedondeado / moneda.Tasa, 2);
+                            }
                         }
                         await _repoRepartos.AddAsync(new RepartoGasto { IdGasto = gastoNormal.IDGASTO, IdParticipante = idsParticipantes[i], Cantidad = valorRedondeado });
                     }
@@ -343,11 +348,23 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> EditGasto(Gasto gastoEditado, string importeString, string divisaSeleccionada, List<int> idsParticipantes, List<string> cantidadesAsignadas)
         {
-            if (!string.IsNullOrWhiteSpace(importeString))
+            if (!TryParseFlexibleDecimal(importeString, out decimal totalImporte) || totalImporte <= 0)
             {
-                if (double.TryParse(importeString.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double total))
+                ModelState.AddModelError("IMPORTE", "Importe no válido.");
+                ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(gastoEditado.IDACTIVIDAD);
+                ViewBag.Divisas = await _repoDivisas.GetDivisasAsync();
+                ViewBag.Repartos = await _repoRepartos.GetRepartosByGastoAsync(gastoEditado.IDGASTO);
+                return View("AddGasto", gastoEditado);
+            }
+
+            gastoEditado.IMPORTE = Math.Round(totalImporte, 2);
+
+            if (divisaSeleccionada != "EUR")
+            {
+                var moneda = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
+                if (moneda != null)
                 {
-                    gastoEditado.IMPORTE = Math.Round((decimal)total, 2);
+                    gastoEditado.IMPORTE = Math.Round(gastoEditado.IMPORTE / (decimal)moneda.Tasa, 2);
                 }
             }
 
@@ -360,18 +377,25 @@ namespace RandomPayMCSD.Controllers
             {
                 for (int i = 0; i < idsParticipantes.Count; i++)
                 {
-                    if (i < cantidadesAsignadas.Count && double.TryParse(cantidadesAsignadas[i].Replace(",", "."), out double valor))
+                    if (i < cantidadesAsignadas.Count && TryParseFlexibleDecimal(cantidadesAsignadas[i], out decimal valorDecimal) && valorDecimal > 0)
                     {
-                        double valorRedondeado = Math.Round(valor, 2);
-                        if (valorRedondeado > 0)
+                        double valorRedondeado = (double)Math.Round(valorDecimal, 2);
+
+                        if (divisaSeleccionada != "EUR")
                         {
-                            await _repoRepartos.AddAsync(new RepartoGasto
+                            var moneda = await _repoDivisas.GetDivisaByCodigoAsync(divisaSeleccionada);
+                            if (moneda != null)
                             {
-                                IdGasto = gastoEditado.IDGASTO,
-                                IdParticipante = idsParticipantes[i],
-                                Cantidad = valorRedondeado
-                            });
+                                valorRedondeado = Math.Round(valorRedondeado / moneda.Tasa, 2);
+                            }
                         }
+
+                        await _repoRepartos.AddAsync(new RepartoGasto
+                        {
+                            IdGasto = gastoEditado.IDGASTO,
+                            IdParticipante = idsParticipantes[i],
+                            Cantidad = valorRedondeado
+                        });
                     }
                 }
             }
@@ -381,11 +405,29 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> SaldarDeuda(int idActividad, int idDeudor, int idAcreedor, string cantidadString)
         {
-            if (double.TryParse(cantidadString.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double cantidad) && cantidad > 0)
+            if (TryParseFlexibleDecimal(cantidadString, out decimal cantidadDecimal))
             {
-                Gasto reembolso = new Gasto { IDACTIVIDAD = idActividad, IDPAGADOR = idDeudor, CONCEPTO = "💸 Reembolso de deuda", IMPORTE = (decimal)Math.Round(cantidad, 2), FECHA = DateTime.Now };
-                await _repoGastos.AddAsync(reembolso);
-                await _repoRepartos.AddAsync(new RepartoGasto { IdGasto = reembolso.IDGASTO, IdParticipante = idAcreedor, Cantidad = Math.Round(cantidad, 2) });
+                cantidadDecimal = Math.Round(cantidadDecimal, 2, MidpointRounding.AwayFromZero);
+
+                if (cantidadDecimal > 0.01m)
+                {
+                    Gasto reembolso = new Gasto
+                    {
+                        IDACTIVIDAD = idActividad,
+                        IDPAGADOR = idDeudor,
+                        CONCEPTO = "💸 Reembolso de deuda",
+                        IMPORTE = cantidadDecimal,
+                        FECHA = DateTime.Now
+                    };
+
+                    await _repoGastos.AddAsync(reembolso);
+                    await _repoRepartos.AddAsync(new RepartoGasto
+                    {
+                        IdGasto = reembolso.IDGASTO,
+                        IdParticipante = idAcreedor,
+                        Cantidad = (double)cantidadDecimal
+                    });
+                }
             }
             return RedirectToAction("Detalle", new { id = idActividad });
         }
@@ -434,9 +476,27 @@ namespace RandomPayMCSD.Controllers
             if (gasto != null)
             {
                 int idActividad = gasto.IDACTIVIDAD;
+
+                // 1. Primero eliminamos los registros de REPARTOS_GASTO asociados
                 var repartos = await _repoRepartos.GetRepartosByGastoAsync(idGasto);
-                foreach (var rep in repartos) await _repoRepartos.DeleteAsync(rep.IdReparto);
+                foreach (var rep in repartos)
+                {
+                    await _repoRepartos.DeleteAsync(rep.IdReparto);
+                }
+
+                // 2. Después desvinculamos los items de la lista de compra
+                var itemsCompra = await _repoListaCompra.GetByActividadAsync(idActividad);
+                var itemsDelGasto = itemsCompra.Where(i => i.IdGasto == idGasto).ToList();
+                foreach (var item in itemsDelGasto)
+                {
+                    item.IdGasto = null;
+                    item.Comprado = false;
+                    await _repoListaCompra.UpdateAsync(item);
+                }
+
+                // 3. Finalmente eliminamos el gasto
                 await _repoGastos.DeleteAsync(idGasto);
+
                 return RedirectToAction("Detalle", new { id = idActividad });
             }
             return RedirectToAction("Index", "Statics");
@@ -455,6 +515,133 @@ namespace RandomPayMCSD.Controllers
                 await _repoParticipantes.UpdateAsync(miParticipante);
             }
             return RedirectToAction("Index", "Statics");
+        }
+
+        // Añade esta acción POST al controlador ActividadesController
+        [HttpPost]
+        public async Task<IActionResult> SendDebtReminderEmail(int idActividad, int idDeudor, int idAcreedor)
+        {
+            try
+            {
+                // Obtenemos la actividad, el deudor y el acreedor
+                Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
+                if (actividad == null)
+                {
+                    TempData["ERROR_CORREO"] = "No se encontró la actividad.";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
+
+                // Obtenemos los datos del deudor desde la BD
+                var deudor = actividad.Participantes.FirstOrDefault(p => p.IDPARTICIPANTE == idDeudor);
+                if (deudor?.IDUSUARIO == null)
+                {
+                    TempData["ERROR_CORREO"] = "El deudor no tiene email registrado.";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
+
+                // Obtenemos el usuario del deudor para su email
+                var usuarioDeudor = await _repoActividades.GetUsuarioByIdAsync(deudor.IDUSUARIO.Value);
+                if (usuarioDeudor == null || string.IsNullOrEmpty(usuarioDeudor.EMAIL))
+                {
+                    TempData["ERROR_CORREO"] = "No se pudo obtener el email del deudor.";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
+
+                // Obtenemos los datos del acreedor
+                var acreedor = actividad.Participantes.FirstOrDefault(p => p.IDPARTICIPANTE == idAcreedor);
+                if (acreedor == null)
+                {
+                    TempData["ERROR_CORREO"] = "No se encontró el acreedor.";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
+
+                // Calculamos la cantidad que debe
+                var balances = await _balanceService.GetBalancesActividadAsync(idActividad);
+                var saldoDeudor = balances.FirstOrDefault(b => b.IdParticipante == idDeudor);
+                double cantidadDebe = saldoDeudor != null ? Math.Abs(saldoDeudor.Debe) : 0;
+
+                // Construimos el correo
+                string asunto = $"Recordatorio de deuda en {actividad.NOMBREACTIVIDAD}";
+                string cuerpoCorreo = $@"
+                    <div style='font-family: Arial, sans-serif; padding: 20px;'>
+                        <h2 style='color: #ef4444;'>Recordatorio de Deuda</h2>
+                        <p>Hola <b>{deudor.NOMBREPARTICIPANTE}</b>,</p>
+                        <p>Te escribimos para recordarte que tienes una deuda pendiente en el grupo <b>{actividad.NOMBREACTIVIDAD}</b>.</p>
+                        <div style='background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 5px;'>
+                            <p>Le debes <b>{cantidadDebe:N2} {actividad.MONEDAPRINCIPAL}</b> a <b>{acreedor.NOMBREPARTICIPANTE}</b></p>
+                        </div>
+                        <p>Por favor, regulariza tu situación lo antes posible.</p>
+                        <p style='margin-top: 20px; font-size: 12px; color: #666;'>Este es un correo automático de RandomPay. Por favor, no respondas a este correo.</p>
+                    </div>";
+
+                // Enviamos el correo
+                await EnviarCorreoRecordatorioAsync(usuarioDeudor.EMAIL, asunto, cuerpoCorreo);
+
+                TempData["EXITO_CORREO"] = $"Recordatorio enviado a {usuarioDeudor.EMAIL}";
+                return RedirectToAction("Detalle", new { id = idActividad });
+            }
+            catch (Exception ex)
+            {
+                TempData["ERROR_CORREO"] = $"Error al enviar el correo: {ex.Message}";
+                return RedirectToAction("Detalle", new { id = idActividad });
+            }
+        }
+
+        // Método privado para enviar correos de recordatorio
+        private async Task EnviarCorreoRecordatorioAsync(string emailDestino, string asunto, string cuerpo)
+        {
+            string miCorreo = _config["EmailSettings:Correo"];
+            string miPassword = _config["EmailSettings:Password"];
+
+            MailMessage mail = new MailMessage();
+            mail.From = new MailAddress(miCorreo, "Equipo de RandomPay");
+            mail.To.Add(emailDestino);
+            mail.Subject = asunto;
+            mail.Body = cuerpo;
+            mail.IsBodyHtml = true;
+
+            using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+            {
+                smtp.Credentials = new NetworkCredential(miCorreo, miPassword);
+                smtp.EnableSsl = true;
+                await smtp.SendMailAsync(mail);
+            }
+        }
+
+        private static bool TryParseFlexibleDecimal(string? rawValue, out decimal result)
+        {
+            result = 0;
+            if (string.IsNullOrWhiteSpace(rawValue)) return false;
+
+            string value = rawValue.Trim().Replace(" ", "");
+
+            int lastComma = value.LastIndexOf(',');
+            int lastDot = value.LastIndexOf('.');
+
+            if (lastComma >= 0 && lastDot >= 0)
+            {
+                if (lastComma > lastDot)
+                {
+                    value = value.Replace(".", "");
+                    value = value.Replace(',', '.');
+                }
+                else
+                {
+                    value = value.Replace(",", "");
+                }
+            }
+            else if (lastComma >= 0)
+            {
+                value = value.Replace('.', ' ');
+                value = value.Replace(" ", "");
+                value = value.Replace(',', '.');
+            }
+            else
+            {
+                value = value.Replace(",", "");
+            }
+
+            return decimal.TryParse(value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out result);
         }
     }
 }

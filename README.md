@@ -17,14 +17,6 @@
 * **La Ruleta RandomPay 🎡:** ¿Nadie quiere invitar la siguiente ronda? Una ruleta animada e interactiva decide al azar a quién le toca pagar.
 * **Diseño "Zero-Scroll":** Interfaz de usuario moderna, limpia y compacta construida con tarjetas y scrolls internos para una experiencia premium en cualquier dispositivo.
 
-## 📸 Capturas de Pantalla
-
-*(Añade aquí las rutas a tus imágenes dentro de la carpeta del repositorio, por ejemplo en `/docs/images/`)*
-
-| Panel Principal | Estadísticas | La Ruleta |
-| :---: | :---: | :---: |
-| ![Panel](ruta/a/tu/imagen_panel.png) | ![Estadísticas](ruta/a/tu/imagen_estadisticas.png) | ![Ruleta](ruta/a/tu/imagen_ruleta.png) |
-
 ## 🛠️ Stack Tecnológico
 
 **Backend:**

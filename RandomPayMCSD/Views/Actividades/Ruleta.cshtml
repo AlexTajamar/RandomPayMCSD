@@ -5,14 +5,12 @@
 }
 
 <style>
-    /* Efecto de fondo sutil */
     .bg-draw {
         background: #f8fafc;
         min-height: 90vh;
         padding-top: 50px;
     }
 
-    /* La Tarjeta Principal */
     .draw-machine {
         background: white;
         border-radius: 35px;
@@ -25,7 +23,6 @@
         overflow: hidden;
     }
 
-        /* Franja superior decorativa */
         .draw-machine::before {
             content: "";
             position: absolute;
@@ -36,7 +33,6 @@
             background: linear-gradient(90deg, #8b5cf6, #d8b4fe);
         }
 
-    /* Visor de la Ruleta (Efecto Slot) */
     .slot-display {
         background: #1e293b;
         border-radius: 20px;
@@ -68,7 +64,7 @@
     }
 
     .winner-glow {
-        color: #10b981; /* Verde esmeralda para el elegido */
+        color: #10b981;
         text-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
         animation: pulse-winner 1.5s infinite;
     }
@@ -87,7 +83,6 @@
         }
     }
 
-    /* Badges de Participantes */
     .friend-badge {
         background: #f1f5f9;
         color: #475569;
@@ -125,7 +120,6 @@
         background: #ef4444;
     }
 
-    /* Inputs y Botones */
     .input-draw {
         border: 2px solid #e2e8f0;
         border-radius: 15px !important;

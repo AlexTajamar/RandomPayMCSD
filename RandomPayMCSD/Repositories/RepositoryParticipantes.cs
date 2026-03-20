@@ -32,8 +32,6 @@ namespace RandomPayMCSD.Repositories
             await this._context.SaveChangesAsync();
         }
 
-  
-        // --- AÑADE ESTE MÉTODO QUE FALTA ---
         public async Task<bool> ExisteParticipanteEnActividad(int idActividad, string nombre, int? idUsuario)
         {
             var consulta = from datos in this._context.Participantes

@@ -19,7 +19,6 @@ namespace RandomPayMCSD.Models
         [Column("ID_USUARIO")]
         public int? IDUSUARIO { get; set; }
 
-        // Relaciones
         [ForeignKey("IDACTIVIDAD")]
         public Actividad Actividad { get; set; }
 

@@ -25,7 +25,6 @@ namespace RandomPayMCSD.Models
         [Column("FECHA")]
         public DateTime FECHA { get; set; }
 
-        // Relaciones
         [ForeignKey("IDACTIVIDAD")]
         public Actividad Actividad { get; set; }
 

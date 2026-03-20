@@ -10,7 +10,6 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession();
@@ -29,11 +28,8 @@ builder.Services.AddAuthentication(options =>
 
 
 string conecctionString = builder.Configuration.GetConnectionString("SqlRandom");
-//builder.Services.AddDbContext<EmpleadosContext>
-//    (options => options.UseSqlServer(conecctionString));
 builder.Services.AddDbContext<RandomPayContext>
     (options => options.UseSqlServer(conecctionString));
-//builder.Services.AddTransient<IRepositoryEmpleados,RepositoryEmpleadosSQLServer>();
 builder.Services.AddScoped<IRepositoryUsuarios, RepositoryUsuarios>();
 builder.Services.AddScoped<IRepositoryActividades, RepositoryActividades>();
 builder.Services.AddScoped<IRepositoryGastos, RepositoryGastos>();
@@ -46,11 +42,9 @@ builder.Services.AddTransient<InvitationService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 

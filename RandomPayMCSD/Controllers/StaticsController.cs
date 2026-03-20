@@ -1,15 +1,15 @@
-using Microsoft.AspNetCore.Authorization; // <--- AÑADIDO
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RandomPayMCSD.Extensions;
 using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
 using System.Globalization;
-using System.Security.Claims; // <--- AÑADIDO
+using System.Security.Claims;
 
 namespace RandomPayMCSD.Controllers
 {
-    [Authorize] // <--- BLINDAJE APLICADO
+    [Authorize]
     public class StaticsController : Controller
     {
         private IRepositoryActividades repoActividades;
@@ -23,7 +23,6 @@ namespace RandomPayMCSD.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // LEEMOS DESDE LOS CLAIMS (Ya no necesitamos comprobar si es null, porque [Authorize] nos garantiza que está logueado)
             int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
             List<Actividad> misActividades = await this.repoActividades.GetByUsuarioIdAsync(idUsuario);

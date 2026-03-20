@@ -3,7 +3,6 @@
 @using RandomPayMCSD.Models
 @{
     ViewData["Title"] = "¿Quién eres?";
-    // Recuperamos el usuario de la sesión para que @user.NOMBRE funcione
     var user = Context.Session.getObject<Usuario>("USUARIO_LOGUEADO");
 }
 
@@ -53,4 +52,4 @@
             <a asp-controller="Statics" asp-action="Index" class="text-muted text-decoration-none fw-bold small">Cancelar y volver</a>
         </div>
     </div>
-</div>
+</div></div>

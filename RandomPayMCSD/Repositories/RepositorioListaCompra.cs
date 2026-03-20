@@ -18,7 +18,6 @@ namespace RandomPayMCSD.Repositories
         {
             return await _context.ItemsCompra
                 .Where(x => x.IdActividad == idActividad)
-                // Ordenamos para que los ya comprados salgan al final de la lista
                 .OrderBy(x => x.Comprado).ThenByDescending(x => x.IdItem)
                 .ToListAsync();
         }

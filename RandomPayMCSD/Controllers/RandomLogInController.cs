@@ -20,7 +20,6 @@ namespace RandomPayMCSD.Controllers
         private RandomPayContext context;
         private readonly IConfiguration _config;
 
-        // Inyectamos el Repo, el Context de BD y la Configuración (appsettings.json)
         public RandomLogInController(IRepositoryUsuarios repo, RandomPayContext context, IConfiguration config)
         {
             this.repo = repo;
@@ -28,7 +27,6 @@ namespace RandomPayMCSD.Controllers
             this._config = config;
         }
 
-        // --- LOGIN ---
         [HttpGet]
         public async Task<IActionResult> Index()
         {
@@ -92,7 +90,6 @@ namespace RandomPayMCSD.Controllers
             return View();
         }
 
-        // --- REGISTER ---
         [HttpGet]
         public IActionResult Register()
         {
@@ -125,7 +122,7 @@ namespace RandomPayMCSD.Controllers
                 {
                     NOMBRE = nombre,
                     EMAIL = email,
-                    PASSWORD = password, // Guardado en texto plano temporalmente para tus pruebas
+                    PASSWORD = password,
                     ROL = "USER"
                 };
 
@@ -163,7 +160,6 @@ namespace RandomPayMCSD.Controllers
             }
         }
 
-        // --- FORGOT PASSWORD ---
         [HttpGet]
         public IActionResult ForgotPassword()
         {
@@ -209,7 +205,6 @@ namespace RandomPayMCSD.Controllers
             return View();
         }
 
-        // --- RESET PASSWORD ---
         [HttpGet]
         public IActionResult ResetPassword(string email, string token)
         {
@@ -230,11 +225,9 @@ namespace RandomPayMCSD.Controllers
 
                 if (seguridad != null && seguridad.TokenRecuperacion == token && seguridad.FechaExpiracionToken > DateTime.Now)
                 {
-                    // Actualizamos la pass antigua
                     usuario.PASSWORD = newPassword;
                     await this.repo.UpdateAsync(usuario);
 
-                    // Generamos nuevo Hash y Salt
                     string nuevoSalt = HelperTools.GenerateSalt();
                     byte[] nuevoHash = HelperCryptography.EncryptPassword(newPassword, nuevoSalt);
 
@@ -254,7 +247,6 @@ namespace RandomPayMCSD.Controllers
             return View();
         }
 
-        // --- LOGOUT ---
         public async Task<IActionResult> LogOut()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -263,16 +255,13 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Index", "RandomLogIn");
         }
 
-        // --- ERROR ACCESO ---
         public IActionResult ErrorAcceso()
         {
             return View();
         }
 
-        // --- ENVÍO DE CORREO ---
         private async Task EnviarCorreoRecuperacionAsync(string emailDestino, string enlace)
         {
-            // Leemos de appsettings.Development.json
             string miCorreo = _config["EmailSettings:Correo"];
             string miPassword = _config["EmailSettings:Password"];
 

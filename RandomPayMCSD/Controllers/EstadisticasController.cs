@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization; // <--- AÑADIDO
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Controllers
 {
-    [Authorize] // <--- BLINDAJE APLICADO
+    [Authorize]
     public class EstadisticasController : Controller
     {
         private readonly IRepositoryActividades _repoActividades;

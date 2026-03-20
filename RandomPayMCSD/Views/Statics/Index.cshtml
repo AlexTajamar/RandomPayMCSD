@@ -3,7 +3,6 @@
     ViewData["Title"] = "Inicio";
     var user = Context.Session.getObject<RandomPayMCSD.Models.Usuario>("USUARIO_LOGUEADO");
 
-    // Calculamos el total de los gastos de TODAS las actividades
     decimal totalGastosAcumulados = 0;
     if (Model != null)
     {
@@ -18,7 +17,6 @@
 }
 
 <style>
-    /* NUEVA TARJETA DE RESUMEN DE GASTOS */
     .summary-card {
         background: white;
         border-radius: 20px;
@@ -40,7 +38,6 @@
         }
     }
 
-    /* Diseño de las Action Cards */
     .action-card {
         border: none;
         border-radius: 20px;

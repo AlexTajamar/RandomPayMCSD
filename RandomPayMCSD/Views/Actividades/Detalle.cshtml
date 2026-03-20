@@ -113,7 +113,6 @@
             </div>
         }
 
-        @* ENCABEZADO *@
         <div class="d-flex justify-content-between align-items-center mb-5">
             <div class="d-flex align-items-center">
                 @if (!string.IsNullOrEmpty(Model.IMAGEN) && Model.IMAGEN.StartsWith("/"))
@@ -190,6 +189,7 @@
                     </form>
 
                     @{
+
                         var listaCompra = ViewBag.ListaCompra as List<RandomPayMCSD.Models.ItemCompra>;
                     }
 

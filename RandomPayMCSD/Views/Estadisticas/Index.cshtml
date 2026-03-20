@@ -101,7 +101,6 @@
         return num.toFixed(2);
     }
 
-    // TARTA
     const ctxGastos = document.getElementById('chartGastos').getContext('2d');
     new Chart(ctxGastos, {
         type: 'doughnut',
@@ -130,7 +129,6 @@
         }
     });
 
-    // BARRAS
     const ctxBalances = document.getElementById('chartBalances').getContext('2d');
     const saldosData = @Html.Raw(Json.Serialize(ViewBag.MontosBalance));
 

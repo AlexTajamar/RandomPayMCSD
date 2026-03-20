@@ -186,7 +186,6 @@
 </div>
 
 @section Scripts {
-    @* Mismo JS que ya tenías, no hace falta cambiar la lógica *@
     <script>
         const tasasDB = @Html.Raw(divisasJson ?? "[]");
         const totalInput = document.getElementById('totalInput');
@@ -306,4 +305,4 @@
             <text>repartirEquitativamente();</text>
         }
     </script>
-}
+}}

@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization; // <--- AÑADIDO
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration; // NUEVO using
+using Microsoft.Extensions.Configuration;
 using RandomPayMCSD.Extensions;
 using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
@@ -9,11 +9,11 @@ using RandomPayMCSD.Services;
 using System.Globalization;
 using System.Net;
 using System.Net.Mail;
-using System.Security.Claims; // <--- AÑADIDO
+using System.Security.Claims;
 
 namespace RandomPayMCSD.Controllers
 {
-    [Authorize] // <--- BLINDAJE APLICADO A TODO EL CONTROLADOR
+    [Authorize]
     public class ActividadesController : Controller
     {
         private readonly IRepositoryActividades _repoActividades;
@@ -24,8 +24,8 @@ namespace RandomPayMCSD.Controllers
         private readonly IRepositoryListaCompra _repoListaCompra;
         private readonly BalanceService _balanceService;
         private readonly InvitationService _invitationService;
-        private readonly IConfiguration _config;  // NUEVA LÍNEA
-        private readonly ILogger<ActividadesController> _logger;   
+        private readonly IConfiguration _config;
+        private readonly ILogger<ActividadesController> _logger;
         public ActividadesController(
             IRepositoryActividades repoActividades,
             IRepositoryListaCompra repoListaCompra,
@@ -50,7 +50,6 @@ namespace RandomPayMCSD.Controllers
             _logger = logger;
         }
 
-        // --- 1. DETALLE Y GESTIÓN DE ACTIVIDAD ---
         public async Task<IActionResult> Detalle(int id)
         {
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
@@ -71,7 +70,6 @@ namespace RandomPayMCSD.Controllers
         [HttpPost]
         public async Task<IActionResult> Crear(string nombre, string moneda, List<string> nombresAmigos, IFormFile imagenForm, string emojiForm)
         {
-            // LEEMOS DESDE LOS CLAIMS EN LUGAR DE LA SESIÓN
             int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             string nombreUsuario = User.FindFirstValue(ClaimTypes.Name);
 
@@ -153,7 +151,6 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = IDACTIVIDAD });
         }
 
-        // --- 2. GESTIÓN DE INVITACIONES Y VINCULACIÓN ---
         [HttpGet]
         public IActionResult Unirse()
         {
@@ -231,7 +228,6 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 3. LISTA DE LA COMPRA ---
         [HttpPost]
         public async Task<IActionResult> AddItemCompra(int idActividad, string nombreItem, string precioEstimadoStr)
         {
@@ -254,7 +250,6 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 4. GASTOS Y DEUDAS ---
         public async Task<IActionResult> AddGasto(int id, int? idItemCompra)
         {
             ViewBag.Participantes = await _repoParticipantes.GetByActividadIdAsync(id);
@@ -432,7 +427,6 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Detalle", new { id = idActividad });
         }
 
-        // --- 5. OTROS MÉTODOS ---
         public async Task<IActionResult> Ruleta(int id)
         {
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
@@ -477,14 +471,12 @@ namespace RandomPayMCSD.Controllers
             {
                 int idActividad = gasto.IDACTIVIDAD;
 
-                // 1. Primero eliminamos los registros de REPARTOS_GASTO asociados
                 var repartos = await _repoRepartos.GetRepartosByGastoAsync(idGasto);
                 foreach (var rep in repartos)
                 {
                     await _repoRepartos.DeleteAsync(rep.IdReparto);
                 }
 
-                // 2. Después desvinculamos los items de la lista de compra
                 var itemsCompra = await _repoListaCompra.GetByActividadAsync(idActividad);
                 var itemsDelGasto = itemsCompra.Where(i => i.IdGasto == idGasto).ToList();
                 foreach (var item in itemsDelGasto)
@@ -494,7 +486,6 @@ namespace RandomPayMCSD.Controllers
                     await _repoListaCompra.UpdateAsync(item);
                 }
 
-                // 3. Finalmente eliminamos el gasto
                 await _repoGastos.DeleteAsync(idGasto);
 
                 return RedirectToAction("Detalle", new { id = idActividad });
@@ -517,13 +508,11 @@ namespace RandomPayMCSD.Controllers
             return RedirectToAction("Index", "Statics");
         }
 
-        // Añade esta acción POST al controlador ActividadesController
         [HttpPost]
         public async Task<IActionResult> SendDebtReminderEmail(int idActividad, int idDeudor, int idAcreedor)
         {
             try
             {
-                // Obtenemos la actividad, el deudor y el acreedor
                 Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(idActividad);
                 if (actividad == null)
                 {
@@ -531,7 +520,6 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                // Obtenemos los datos del deudor desde la BD
                 var deudor = actividad.Participantes.FirstOrDefault(p => p.IDPARTICIPANTE == idDeudor);
                 if (deudor?.IDUSUARIO == null)
                 {
@@ -539,7 +527,6 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                // Obtenemos el usuario del deudor para su email
                 var usuarioDeudor = await _repoActividades.GetUsuarioByIdAsync(deudor.IDUSUARIO.Value);
                 if (usuarioDeudor == null || string.IsNullOrEmpty(usuarioDeudor.EMAIL))
                 {
@@ -547,7 +534,6 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                // Obtenemos los datos del acreedor
                 var acreedor = actividad.Participantes.FirstOrDefault(p => p.IDPARTICIPANTE == idAcreedor);
                 if (acreedor == null)
                 {
@@ -555,12 +541,10 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                // Calculamos la cantidad que debe
                 var balances = await _balanceService.GetBalancesActividadAsync(idActividad);
                 var saldoDeudor = balances.FirstOrDefault(b => b.IdParticipante == idDeudor);
                 double cantidadDebe = saldoDeudor != null ? Math.Abs(saldoDeudor.Debe) : 0;
 
-                // Construimos el correo
                 string asunto = $"Recordatorio de deuda en {actividad.NOMBREACTIVIDAD}";
                 string cuerpoCorreo = $@"
                     <div style='font-family: Arial, sans-serif; padding: 20px;'>
@@ -574,7 +558,6 @@ namespace RandomPayMCSD.Controllers
                         <p style='margin-top: 20px; font-size: 12px; color: #666;'>Este es un correo automático de RandomPay. Por favor, no respondas a este correo.</p>
                     </div>";
 
-                // Enviamos el correo
                 await EnviarCorreoRecordatorioAsync(usuarioDeudor.EMAIL, asunto, cuerpoCorreo);
 
                 TempData["EXITO_CORREO"] = $"Recordatorio enviado a {usuarioDeudor.EMAIL}";
@@ -587,7 +570,6 @@ namespace RandomPayMCSD.Controllers
             }
         }
 
-        // Método privado para enviar correos de recordatorio
         private async Task EnviarCorreoRecordatorioAsync(string emailDestino, string asunto, string cuerpo)
         {
             string miCorreo = _config["EmailSettings:Correo"];

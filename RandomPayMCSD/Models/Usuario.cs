@@ -22,7 +22,6 @@ namespace RandomPayMCSD.Models
         [Column("ROL")]
         public string ROL { get; set; }
 
-        // Propiedades de navegación
         public ICollection<Actividad> ActividadesCreadas { get; set; }
         public ICollection<Participante> Participaciones { get; set; }
     }

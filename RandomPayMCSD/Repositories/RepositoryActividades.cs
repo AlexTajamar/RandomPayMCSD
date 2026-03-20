@@ -17,8 +17,8 @@ namespace RandomPayMCSD.Repositories
         public async Task<List<Actividad>> GetByUsuarioIdAsync(int usuarioId)
         {
             return await _context.Actividades
-                .Include(a => a.Gastos) // <-- AÑADIDO: Extrae los gastos para poder sumarlos
-                .Include(a => a.Participantes) // <-- AÑADIDO: Útil para ver cuánta gente hay
+                .Include(a => a.Gastos)
+                .Include(a => a.Participantes)
                 .Where(a => a.Participantes.Any(p => p.IDUSUARIO == usuarioId))
                 .ToListAsync();
         }
@@ -38,7 +38,7 @@ namespace RandomPayMCSD.Repositories
                 .Include(a => a.Gastos)
                     .ThenInclude(g => g.Pagador)
                 .Include(a => a.Gastos)
-                    .ThenInclude(g => g.Repartos) // Ahora esto ya no dará error
+                    .ThenInclude(g => g.Repartos)
                 .FirstOrDefaultAsync(a => a.IDACTIVIDAD == id);
         }
 

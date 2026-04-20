@@ -1,28 +1,25 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RandomPayMCSD.Data;
+using Microsoft.AspNetCore.Http;
 using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Models;
-using RandomPayMCSD.Repositories.Interfaces;
+using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Repositories
 {
-    public class RepositoryDivisas : IRepositoryDivisas
+    public class RepositoryDivisas : ApiClientBase, IRepositoryDivisas
     {
-        private RandomPayContext context;
-
-        public RepositoryDivisas(RandomPayContext context)
+        public RepositoryDivisas(HttpClient httpClient, IHttpContextAccessor accessor) : base(httpClient, accessor)
         {
-            this.context = context;
         }
 
         public async Task<List<Divisa>> GetDivisasAsync()
         {
-            return await this.context.Divisas.ToListAsync();
+            return await GetAsync<List<Divisa>>("/apiRandomPay/Statics/Divisas") ?? new List<Divisa>();
         }
 
-        public async Task<Divisa> GetDivisaByCodigoAsync(string codigo)
+        public async Task<Divisa?> GetDivisaByCodigoAsync(string codigo)
         {
-            return await this.context.Divisas.FirstOrDefaultAsync(x => x.Codigo == codigo);
+            var divisas = await GetDivisasAsync();
+            return divisas.FirstOrDefault(x => x.Codigo.Equals(codigo, StringComparison.OrdinalIgnoreCase));
         }
     }
 }

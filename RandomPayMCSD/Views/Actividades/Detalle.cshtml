@@ -191,47 +191,34 @@
                     @{
 
                         var listaCompra = ViewBag.ListaCompra as List<RandomPayMCSD.Models.ItemCompra>;
+                        var listaPendiente = listaCompra?.Where(x => !x.Comprado).ToList() ?? new List<RandomPayMCSD.Models.ItemCompra>();
                     }
 
-                    @if (listaCompra != null && listaCompra.Any())
+                    @if (listaPendiente.Any())
                     {
                         <div class="d-flex flex-column gap-2">
-                            @foreach (var item in listaCompra)
+                            @foreach (var item in listaPendiente)
                             {
-                                <div class="list-item-modern p-3 @(item.Comprado ? "opacity-50 bg-light" : "")" style="margin-bottom: 0;">
+                                <div class="list-item-modern p-3" style="margin-bottom: 0;">
                                     <div class="d-flex align-items-center">
-                                        @if (item.Comprado)
-                                        {
-
-                                            <div>
-                                                <h6 class="mb-0 fw-bold text-decoration-line-through">@item.NombreItem</h6>
-                                                <small class="text-muted">Ya comprado</small>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <i class="fa-regular fa-circle text-muted fs-4 me-3"></i>
-                                            <div>
-                                                <h6 class="mb-0 fw-bold text-dark">@item.NombreItem</h6>
-                                                <small class="text-muted fw-bold">Est: @item.PrecioEstimado.ToString("N2") @Model.MONEDAPRINCIPAL</small>
-                                            </div>
-                                        }
+                                        <i class="fa-regular fa-circle text-muted fs-4 me-3"></i>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold text-dark">@item.NombreItem</h6>
+                                            <small class="text-muted fw-bold">Est: @item.PrecioEstimado.ToString("N2") @Model.MONEDAPRINCIPAL</small>
+                                        </div>
                                     </div>
 
                                     <div class="d-flex gap-2">
-                                        @if (!item.Comprado)
-                                        {
-                                            <a href="@Url.Action("AddGasto", "Actividades", new { id = Model.IDACTIVIDAD, idItemCompra = item.IdItem })" class="btn btn-sm btn-primary-custom text-decoration-none" style="padding: 0.4rem 1rem;">
-                                                Finalizar
-                                            </a>
-                                            <form asp-action="DeleteItemCompra" method="post">
-                                                <input type="hidden" name="idItem" value="@item.IdItem" />
-                                                <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
-                                                <button type="submit" class="btn btn-sm btn-light border text-danger" title="Borrar de la lista">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        }
+                                        <a href="@Url.Action("AddGasto", "Actividades", new { id = Model.IDACTIVIDAD, idItemCompra = item.IdItem })" class="btn btn-sm btn-primary-custom text-decoration-none" style="padding: 0.4rem 1rem;">
+                                            Finalizar
+                                        </a>
+                                        <form asp-action="DeleteItemCompra" method="post">
+                                            <input type="hidden" name="idItem" value="@item.IdItem" />
+                                            <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                                            <button type="submit" class="btn btn-sm btn-light border text-danger" title="Borrar de la lista">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             }

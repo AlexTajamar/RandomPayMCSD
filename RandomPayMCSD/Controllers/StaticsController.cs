@@ -14,11 +14,13 @@ namespace RandomPayMCSD.Controllers
     {
         private IRepositoryActividades repoActividades;
         private IRepositoryDivisas repoDivisas;
+        private readonly IRepositoryGastos _repoGastos;
 
-        public StaticsController(IRepositoryActividades repoActividades, IRepositoryDivisas repoDivisas)
+        public StaticsController(IRepositoryActividades repoActividades, IRepositoryDivisas repoDivisas, IRepositoryGastos repoGastos)
         {
             this.repoActividades = repoActividades;
             this.repoDivisas = repoDivisas;
+            _repoGastos = repoGastos;
         }
 
         public async Task<IActionResult> Index()
@@ -26,6 +28,11 @@ namespace RandomPayMCSD.Controllers
             int idUsuario = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
             List<Actividad> misActividades = await this.repoActividades.GetByUsuarioIdAsync(idUsuario);
+            foreach (var actividad in misActividades)
+            {
+                actividad.Gastos = await _repoGastos.GetByActividadIdAsync(actividad.IDACTIVIDAD);
+            }
+
             return View(misActividades);
         }
 

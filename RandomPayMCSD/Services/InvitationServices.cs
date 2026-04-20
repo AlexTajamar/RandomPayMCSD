@@ -1,10 +1,7 @@
-﻿namespace RandomPayMCSD.Services
+namespace RandomPayMCSD.Services
 {
     public class InvitationService
     {
-        public string GenerarCodigoUnico()
-        {
-            return Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
-        }
+        public string GenerarCodigoUnico() => Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
     }
 }

@@ -1,4 +1,4 @@
-﻿using RandomPayMCSD.Models;
+using RandomPayMCSD.Models;
 
 namespace RandomPayMCSD.Repositories.Interfaces
 {

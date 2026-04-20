@@ -1,62 +1,45 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RandomPayMCSD.Data;
+using Microsoft.AspNetCore.Http;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
+using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Repositories
 {
-    public class RepositoryParticipantes : IRepositoryParticipantes
+    public class RepositoryParticipantes : ApiClientBase, IRepositoryParticipantes
     {
-        private readonly RandomPayContext _context;
-
-        public RepositoryParticipantes(RandomPayContext context)
+        public RepositoryParticipantes(HttpClient httpClient, IHttpContextAccessor accessor) : base(httpClient, accessor)
         {
-            _context = context;
         }
 
         public async Task<List<Participante>> GetByActividadIdAsync(int actividadId)
         {
-            var consulta = from datos in this._context.Participantes
-                           where datos.IDACTIVIDAD == actividadId
-                           select datos;
-            return await consulta.ToListAsync();
-        }
-        public async Task<Participante> GetByIdAsync(int idParticipante)
-        {
-            return await this._context.Participantes.FindAsync(idParticipante);
+            return await GetAsync<List<Participante>>($"/apiRandomPay/Participantes/PorActividad/{actividadId}") ?? new List<Participante>();
         }
 
-        public async Task UpdateAsync(Participante participante)
+        public Task<Participante?> GetByIdAsync(int id)
         {
-            this._context.Participantes.Update(participante);
-            await this._context.SaveChangesAsync();
+            return GetAsync<Participante>($"/apiRandomPay/Participantes/{id}");
+        }
+
+        public Task AddAsync(Participante participante)
+        {
+            return PostAsync("/apiRandomPay/Participantes", participante);
+        }
+
+        public Task UpdateAsync(Participante participante)
+        {
+            return PutAsync("/apiRandomPay/Participantes", participante);
+        }
+
+        public Task DeleteAsync(int id)
+        {
+            return DeleteAsync($"/apiRandomPay/Participantes/{id}");
         }
 
         public async Task<bool> ExisteParticipanteEnActividad(int idActividad, string nombre, int? idUsuario)
         {
-            var consulta = from datos in this._context.Participantes
-                           where datos.IDACTIVIDAD == idActividad
-                              && datos.NOMBREPARTICIPANTE == nombre
-                           select datos;
-            return await consulta.AnyAsync();
-        }
-
-        public async Task AddAsync(Participante participante)
-        {
-            var consulta = from datos in this._context.Participantes select datos.IDPARTICIPANTE;
-            participante.IDPARTICIPANTE = await consulta.AnyAsync() ? await consulta.MaxAsync() + 1 : 1;
-            await this._context.Participantes.AddAsync(participante);
-            await this._context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var participante = await GetByIdAsync(id);
-            if (participante != null)
-            {
-                _context.Participantes.Remove(participante);
-                await _context.SaveChangesAsync();
-            }
+            var participantes = await GetByActividadIdAsync(idActividad);
+            return participantes.Any(p => p.NOMBREPARTICIPANTE.Equals(nombre, StringComparison.OrdinalIgnoreCase) && p.IDUSUARIO == idUsuario);
         }
     }
 }

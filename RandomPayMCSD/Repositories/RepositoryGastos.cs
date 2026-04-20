@@ -1,68 +1,66 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RandomPayMCSD.Data;
+using Microsoft.AspNetCore.Http;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
+using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Repositories
 {
-    public class RepositoryGastos : IRepositoryGastos
+    public class RepositoryGastos : ApiClientBase, IRepositoryGastos
     {
-        private readonly RandomPayContext _context;
-
-        public RepositoryGastos(RandomPayContext context)
+        public RepositoryGastos(HttpClient httpClient, IHttpContextAccessor accessor) : base(httpClient, accessor)
         {
-            this._context = context;
         }
 
         public async Task<List<Gasto>> GetByActividadIdAsync(int actividadId)
         {
-            var consulta = from datos in this._context.Gastos
-                           where datos.IDACTIVIDAD == actividadId
-                           select datos;
-
-            return await consulta.ToListAsync();
+            return await GetAsync<List<Gasto>>($"/apiRandomPay/Gastos/PorActividad/{actividadId}") ?? new List<Gasto>();
         }
 
-        public async Task<Gasto?> GetByIdAsync(int id)
+        public Task<Gasto?> GetByIdAsync(int id)
         {
-            var consulta = from datos in this._context.Gastos
-                           where datos.IDGASTO == id
-                           select datos;
-
-            return await consulta.FirstOrDefaultAsync();
+            return GetAsync<Gasto>($"/apiRandomPay/Gastos/{id}");
         }
 
-        public async Task AddAsync(Gasto gasto)
+        public async Task<int> AddAsync(Gasto gasto)
         {
-            var consulta = from datos in this._context.Gastos select datos.IDGASTO;
-
-            if (await consulta.AnyAsync())
+            Gasto? created = await PostAsync<Gasto, Gasto>("/apiRandomPay/Gastos", gasto);
+            if (created?.IDGASTO > 0)
             {
-                gasto.IDGASTO = await consulta.MaxAsync() + 1;
-            }
-            else
-            {
-                gasto.IDGASTO = 1;
+                gasto.IDGASTO = created.IDGASTO;
+                return created.IDGASTO;
             }
 
-            await this._context.Gastos.AddAsync(gasto);
-            await this._context.SaveChangesAsync();
+            if (gasto.IDGASTO > 0)
+            {
+                return gasto.IDGASTO;
+            }
+
+            List<Gasto> gastos = await GetByActividadIdAsync(gasto.IDACTIVIDAD);
+            Gasto? match = gastos
+                .Where(g => g.IDPAGADOR == gasto.IDPAGADOR
+                    && g.IMPORTE == gasto.IMPORTE
+                    && string.Equals(g.CONCEPTO?.Trim(), gasto.CONCEPTO?.Trim(), StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(g => g.FECHA)
+                .ThenByDescending(g => g.IDGASTO)
+                .FirstOrDefault();
+
+            if (match?.IDGASTO > 0)
+            {
+                gasto.IDGASTO = match.IDGASTO;
+                return match.IDGASTO;
+            }
+
+            return 0;
         }
 
         public async Task UpdateAsync(Gasto gasto)
         {
-            this._context.Gastos.Update(gasto);
-            await this._context.SaveChangesAsync();
+            await PutAsync("/apiRandomPay/Gastos", gasto);
         }
 
         public async Task DeleteAsync(int id)
         {
-            Gasto gasto = await this.GetByIdAsync(id);
-            if (gasto != null)
-            {
-                this._context.Gastos.Remove(gasto);
-                await this._context.SaveChangesAsync();
-            }
+            await DeleteAsync($"/apiRandomPay/Gastos/{id}");
         }
     }
 }

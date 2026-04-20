@@ -1,89 +1,81 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RandomPayMCSD.Data;
+using Microsoft.AspNetCore.Http;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
+using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Repositories
 {
-    public class RepositoryActividades : IRepositoryActividades
+    public class RepositoryActividades : ApiClientBase, IRepositoryActividades
     {
-        private readonly RandomPayContext _context;
-
-        public RepositoryActividades(RandomPayContext context)
+        public RepositoryActividades(HttpClient httpClient, IHttpContextAccessor accessor) : base(httpClient, accessor)
         {
-            this._context = context;
         }
 
         public async Task<List<Actividad>> GetByUsuarioIdAsync(int usuarioId)
         {
-            return await _context.Actividades
-                .Include(a => a.Gastos)
-                .Include(a => a.Participantes)
-                .Where(a => a.Participantes.Any(p => p.IDUSUARIO == usuarioId))
-                .ToListAsync();
+            return await GetAsync<List<Actividad>>("/apiRandomPay/Actividades/MisActividades") ?? new List<Actividad>();
         }
 
-        public async Task<Actividad> GetByCodigoAsync(string codigo)
+        public Task<Actividad?> GetByIdWithDetailsAsync(int id)
         {
-            string codigoLimpio = codigo.Trim().ToUpper();
-            return await _context.Actividades
-                .Include(a => a.Participantes)
-                .FirstOrDefaultAsync(x => x.INVITACIONCOD == codigoLimpio);
+            return GetAsync<Actividad>($"/apiRandomPay/Actividades/{id}");
         }
 
-        public async Task<Actividad?> GetByIdWithDetailsAsync(int id)
+        public Task<Actividad?> GetByCodigoInvitacionAsync(string codigo)
         {
-            return await _context.Actividades
-                .Include(a => a.Participantes)
-                .Include(a => a.Gastos)
-                    .ThenInclude(g => g.Pagador)
-                .Include(a => a.Gastos)
-                    .ThenInclude(g => g.Repartos)
-                .FirstOrDefaultAsync(a => a.IDACTIVIDAD == id);
-        }
-
-        public async Task<Actividad?> GetByCodigoInvitacionAsync(string codigo)
-        {
-            return await _context.Actividades
-                .FirstOrDefaultAsync(x => x.INVITACIONCOD == codigo);
+            return GetByCodigoAsync(codigo);
         }
 
         public async Task<bool> ExisteCodigoAsync(string codigo)
         {
-            return await _context.Actividades
-                .AnyAsync(x => x.INVITACIONCOD == codigo);
+            return await GetByCodigoAsync(codigo) != null;
         }
 
-        public async Task AddAsync(Actividad actividad)
+        public async Task<int> AddAsync(Actividad actividad)
         {
-            var maxId = await _context.Actividades.AnyAsync()
-                ? await _context.Actividades.MaxAsync(a => a.IDACTIVIDAD)
-                : 0;
-            actividad.IDACTIVIDAD = maxId + 1;
-
-            await _context.Actividades.AddAsync(actividad);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateAsync(Actividad actividad)
-        {
-            _context.Actividades.Update(actividad);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var actividad = await _context.Actividades.FindAsync(id);
-            if (actividad != null)
+            Actividad? created = await PostAsync<Actividad, Actividad>("/apiRandomPay/Actividades", actividad);
+            if (created?.IDACTIVIDAD > 0)
             {
-                _context.Actividades.Remove(actividad);
-                await _context.SaveChangesAsync();
+                actividad.IDACTIVIDAD = created.IDACTIVIDAD;
+                return created.IDACTIVIDAD;
             }
+
+            if (actividad.IDACTIVIDAD > 0)
+            {
+                return actividad.IDACTIVIDAD;
+            }
+
+            if (!string.IsNullOrWhiteSpace(actividad.INVITACIONCOD))
+            {
+                Actividad? byCodigo = await GetByCodigoAsync(actividad.INVITACIONCOD);
+                if (byCodigo?.IDACTIVIDAD > 0)
+                {
+                    actividad.IDACTIVIDAD = byCodigo.IDACTIVIDAD;
+                    return byCodigo.IDACTIVIDAD;
+                }
+            }
+
+            return 0;
         }
 
-        public async Task<Usuario> GetUsuarioByIdAsync(int usuarioId)
+        public Task UpdateAsync(Actividad actividad)
         {
-            return await _context.Usuarios.FirstOrDefaultAsync(u => u.IDUSUARIO == usuarioId);
+            return PutAsync("/apiRandomPay/Actividades", actividad);
+        }
+
+        public Task DeleteAsync(int id)
+        {
+            return DeleteAsync($"/apiRandomPay/Actividades/{id}");
+        }
+
+        public Task<Actividad?> GetByCodigoAsync(string codigo)
+        {
+            return GetAsync<Actividad>($"/apiRandomPay/Actividades/ByCodigo/{codigo.Trim().ToUpperInvariant()}");
+        }
+
+        public Task<Usuario?> GetUsuarioByIdAsync(int usuarioId)
+        {
+            return GetAsync<Usuario>($"/apiRandomPay/Users/{usuarioId}");
         }
     }
 }

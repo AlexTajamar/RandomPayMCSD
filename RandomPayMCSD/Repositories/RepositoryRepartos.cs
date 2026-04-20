@@ -1,44 +1,29 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RandomPayMCSD.Data;
+using Microsoft.AspNetCore.Http;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
+using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Repositories
 {
-    public class RepositoryRepartos : IRepositoryRepartos
+    public class RepositoryRepartos : ApiClientBase, IRepositoryRepartos
     {
-        private RandomPayContext context;
-
-        public RepositoryRepartos(RandomPayContext context)
+        public RepositoryRepartos(HttpClient httpClient, IHttpContextAccessor accessor) : base(httpClient, accessor)
         {
-            this.context = context;
         }
 
-        public async Task AddAsync(RepartoGasto reparto)
+        public Task AddAsync(RepartoGasto reparto)
         {
-            var consulta = from datos in this.context.RepartosGasto select datos.IdReparto;
-            int maxId = await consulta.AnyAsync() ? await consulta.MaxAsync() : 0;
-            reparto.IdReparto = maxId + 1;
-
-            await this.context.RepartosGasto.AddAsync(reparto);
-            await this.context.SaveChangesAsync();
+            return PostAsync($"/apiRandomPay/Gastos/{reparto.IdGasto}/Repartos", reparto);
         }
 
         public async Task<List<RepartoGasto>> GetRepartosByGastoAsync(int idGasto)
         {
-            return await this.context.RepartosGasto
-                .Where(r => r.IdGasto == idGasto)
-                .ToListAsync();
+            return await GetAsync<List<RepartoGasto>>($"/apiRandomPay/Gastos/{idGasto}/Repartos") ?? new List<RepartoGasto>();
         }
 
-        public async Task DeleteAsync(int idReparto)
+        public Task DeleteAsync(int idReparto)
         {
-            RepartoGasto reparto = await this.context.RepartosGasto.FindAsync(idReparto);
-            if (reparto != null)
-            {
-                this.context.RepartosGasto.Remove(reparto);
-                await this.context.SaveChangesAsync();
-            }
+            return DeleteAsync($"/apiRandomPay/Gastos/Repartos/{idReparto}");
         }
     }
 }

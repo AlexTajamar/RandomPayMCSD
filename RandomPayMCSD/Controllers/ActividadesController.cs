@@ -55,6 +55,17 @@ namespace RandomPayMCSD.Controllers
             Actividad actividad = await _repoActividades.GetByIdWithDetailsAsync(id);
             if (actividad == null) return RedirectToAction("Index", "Statics");
 
+            if (actividad.Gastos != null && actividad.Participantes != null)
+            {
+                foreach (var gasto in actividad.Gastos)
+                {
+                    if (gasto.Pagador == null)
+                    {
+                        gasto.Pagador = actividad.Participantes.FirstOrDefault(p => p.IDPARTICIPANTE == gasto.IDPAGADOR);
+                    }
+                }
+            }
+
             ViewBag.Balances = await _balanceService.GetBalancesActividadAsync(id);
             ViewBag.Transferencias = await _balanceService.GetTransferenciasAsync(id);
             ViewBag.ListaCompra = await _repoListaCompra.GetByActividadAsync(id);
@@ -103,11 +114,16 @@ namespace RandomPayMCSD.Controllers
                 INVITACIONCOD = _invitationService.GenerarCodigoUnico(),
                 IMAGEN = imagenFinal
             };
-            await _repoActividades.AddAsync(nuevaActividad);
+            int idActividadCreada = await _repoActividades.AddAsync(nuevaActividad);
+            if (idActividadCreada <= 0)
+            {
+                TempData["ERROR_CORREO"] = "No se pudo recuperar la actividad creada.";
+                return RedirectToAction("Index", "Statics");
+            }
 
             Participante creadorParticipante = new Participante
             {
-                IDACTIVIDAD = nuevaActividad.IDACTIVIDAD,
+                IDACTIVIDAD = idActividadCreada,
                 NOMBREPARTICIPANTE = nombreUsuario,
                 IDUSUARIO = idUsuario
             };
@@ -119,14 +135,14 @@ namespace RandomPayMCSD.Controllers
                 {
                     await _repoParticipantes.AddAsync(new Participante
                     {
-                        IDACTIVIDAD = nuevaActividad.IDACTIVIDAD,
+                        IDACTIVIDAD = idActividadCreada,
                         NOMBREPARTICIPANTE = nombreAmigo.Trim(),
                         IDUSUARIO = null
                     });
                 }
             }
 
-            return RedirectToAction("Detalle", new { id = nuevaActividad.IDACTIVIDAD });
+            return RedirectToAction("Detalle", new { id = idActividadCreada });
         }
 
         public async Task<IActionResult> AddParticipante(int id)
@@ -291,7 +307,14 @@ namespace RandomPayMCSD.Controllers
             }
 
             gastoNormal.FECHA = DateTime.Now;
-            await _repoGastos.AddAsync(gastoNormal);
+            int idGastoCreado = await _repoGastos.AddAsync(gastoNormal);
+            if (idGastoCreado <= 0)
+            {
+                TempData["ERROR_CORREO"] = "Se creó el gasto, pero no se pudo recuperar su identificador para repartirlo.";
+                return RedirectToAction("Detalle", new { id = gastoNormal.IDACTIVIDAD });
+            }
+
+            gastoNormal.IDGASTO = idGastoCreado;
 
             if (idsParticipantes != null)
             {
@@ -415,7 +438,15 @@ namespace RandomPayMCSD.Controllers
                         FECHA = DateTime.Now
                     };
 
-                    await _repoGastos.AddAsync(reembolso);
+                    int idReembolso = await _repoGastos.AddAsync(reembolso);
+                    if (idReembolso <= 0)
+                    {
+                        TempData["ERROR_CORREO"] = "No se pudo registrar el reembolso correctamente.";
+                        return RedirectToAction("Detalle", new { id = idActividad });
+                    }
+
+                    reembolso.IDGASTO = idReembolso;
+
                     await _repoRepartos.AddAsync(new RepartoGasto
                     {
                         IdGasto = reembolso.IDGASTO,
@@ -541,53 +572,50 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                var balances = await _balanceService.GetBalancesActividadAsync(idActividad);
-                var saldoDeudor = balances.FirstOrDefault(b => b.IdParticipante == idDeudor);
-                double cantidadDebe = saldoDeudor != null ? Math.Abs(saldoDeudor.Debe) : 0;
+                if (acreedor.IDUSUARIO == null)
+                {
+                    TempData["ERROR_CORREO"] = "El acreedor no tiene email registrado.";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
 
-                string asunto = $"Recordatorio de deuda en {actividad.NOMBREACTIVIDAD}";
-                string cuerpoCorreo = $@"
-                    <div style='font-family: Arial, sans-serif; padding: 20px;'>
-                        <h2 style='color: #ef4444;'>Recordatorio de Deuda</h2>
-                        <p>Hola <b>{deudor.NOMBREPARTICIPANTE}</b>,</p>
-                        <p>Te escribimos para recordarte que tienes una deuda pendiente en el grupo <b>{actividad.NOMBREACTIVIDAD}</b>.</p>
-                        <div style='background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 5px;'>
-                            <p>Le debes <b>{cantidadDebe:N2} {actividad.MONEDAPRINCIPAL}</b> a <b>{acreedor.NOMBREPARTICIPANTE}</b></p>
-                        </div>
-                        <p>Por favor, regulariza tu situación lo antes posible.</p>
-                        <p style='margin-top: 20px; font-size: 12px; color: #666;'>Este es un correo automático de RandomPay. Por favor, no respondas a este correo.</p>
-                    </div>";
+                var usuarioAcreedor = await _repoActividades.GetUsuarioByIdAsync(acreedor.IDUSUARIO.Value);
+                if (usuarioAcreedor == null || string.IsNullOrEmpty(usuarioAcreedor.EMAIL))
+                {
+                    TempData["ERROR_CORREO"] = "No se pudo obtener el email del acreedor.";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
 
-                await EnviarCorreoRecordatorioAsync(usuarioDeudor.EMAIL, asunto, cuerpoCorreo);
+                string asunto = "Recordatorio de Deuda en Actividad " + actividad.NOMBREACTIVIDAD;
+                string cuerpo = $"<p>Hola,</p><p>Este es un recordatorio de que tienes una deuda pendiente con el acreedor en la actividad <strong>{actividad.NOMBREACTIVIDAD}</strong>.</p><p>El acreedor es: {acreedor.NOMBREPARTICIPANTE}.</p><p>Por favor, realiza el pago correspondiente.</p><p>Gracias.</p>";
 
-                TempData["EXITO_CORREO"] = $"Recordatorio enviado a {usuarioDeudor.EMAIL}";
-                return RedirectToAction("Detalle", new { id = idActividad });
+                string miCorreo = _config["EmailSettings:Correo"];
+                string miPassword = _config["EmailSettings:Password"];
+
+                using (var smtpClient = new SmtpClient("smtp.gmail.com", 587))
+                {
+                    smtpClient.EnableSsl = true;
+                    smtpClient.Credentials = new NetworkCredential(miCorreo, miPassword);
+
+                    var mailMessage = new MailMessage
+                    {
+                        From = new MailAddress(miCorreo),
+                        Subject = asunto,
+                        Body = cuerpo,
+                        IsBodyHtml = true,
+                    };
+                    mailMessage.To.Add(usuarioDeudor.EMAIL);
+                    smtpClient.Send(mailMessage);
+                }
+
+                TempData["EXITO_CORREO"] = "Recordatorio de deuda enviado correctamente.";
             }
             catch (Exception ex)
             {
-                TempData["ERROR_CORREO"] = $"Error al enviar el correo: {ex.Message}";
-                return RedirectToAction("Detalle", new { id = idActividad });
+                _logger.LogError(ex, "Error al enviar recordatorio de deuda");
+                TempData["ERROR_CORREO"] = "Ocurrió un error al enviar el recordatorio de deuda.";
             }
-        }
 
-        private async Task EnviarCorreoRecordatorioAsync(string emailDestino, string asunto, string cuerpo)
-        {
-            string miCorreo = _config["EmailSettings:Correo"];
-            string miPassword = _config["EmailSettings:Password"];
-
-            MailMessage mail = new MailMessage();
-            mail.From = new MailAddress(miCorreo, "Equipo de RandomPay");
-            mail.To.Add(emailDestino);
-            mail.Subject = asunto;
-            mail.Body = cuerpo;
-            mail.IsBodyHtml = true;
-
-            using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
-            {
-                smtp.Credentials = new NetworkCredential(miCorreo, miPassword);
-                smtp.EnableSsl = true;
-                await smtp.SendMailAsync(mail);
-            }
+            return RedirectToAction("Detalle", new { id = idActividad });
         }
 
         private static bool TryParseFlexibleDecimal(string? rawValue, out decimal result)
@@ -595,35 +623,15 @@ namespace RandomPayMCSD.Controllers
             result = 0;
             if (string.IsNullOrWhiteSpace(rawValue)) return false;
 
-            string value = rawValue.Trim().Replace(" ", "");
+            // Intenta parsear directamente como decimal
+            if (decimal.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out result))
+                return true;
 
-            int lastComma = value.LastIndexOf(',');
-            int lastDot = value.LastIndexOf('.');
+            // Reemplaza , por . para el parseo
+            rawValue = rawValue.Replace(',', '.');
 
-            if (lastComma >= 0 && lastDot >= 0)
-            {
-                if (lastComma > lastDot)
-                {
-                    value = value.Replace(".", "");
-                    value = value.Replace(',', '.');
-                }
-                else
-                {
-                    value = value.Replace(",", "");
-                }
-            }
-            else if (lastComma >= 0)
-            {
-                value = value.Replace('.', ' ');
-                value = value.Replace(" ", "");
-                value = value.Replace(',', '.');
-            }
-            else
-            {
-                value = value.Replace(",", "");
-            }
-
-            return decimal.TryParse(value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out result);
+            // Intenta parsear nuevamente
+            return decimal.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out result);
         }
     }
 }

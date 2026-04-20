@@ -1,76 +1,50 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RandomPayMCSD.Data;
+using Microsoft.AspNetCore.Http;
 using RandomPayMCSD.Models;
 using RandomPayMCSD.Repositories.Interfaces;
+using RandomPayMCSD.Services;
 
 namespace RandomPayMCSD.Repositories
 {
-    public class RepositoryUsuarios : IRepositoryUsuarios
+    public class RepositoryUsuarios : ApiClientBase, IRepositoryUsuarios
     {
-        private readonly RandomPayContext _context;
-
-        public RepositoryUsuarios(RandomPayContext context)
+        public RepositoryUsuarios(HttpClient httpClient, IHttpContextAccessor accessor) : base(httpClient, accessor)
         {
-                  this._context = context;
         }
 
         public async Task<List<Usuario>> GetAllAsync()
         {
-            var consulta = from datos in this._context.Usuarios
-                           select datos;
-
-            return await consulta.ToListAsync();
+            return await GetAsync<List<Usuario>>("/apiRandomPay/Users") ?? new List<Usuario>();
         }
 
-        public async Task<Usuario> GetByIdAsync(int id)
+        public Task<Usuario?> GetByIdAsync(int id)
         {
-            var consulta = from datos in this._context.Usuarios
-                           where datos.IDUSUARIO == id
-                           select datos;
-
-            return await consulta.FirstOrDefaultAsync();
+            return GetAsync<Usuario>($"/apiRandomPay/Users/{id}");
         }
 
-        public async Task<Usuario> GetByEmailAsync(string email)
+        public async Task<Usuario?> GetByEmailAsync(string email)
         {
-            var consulta = from datos in this._context.Usuarios
-                           where datos.EMAIL == email
-                           select datos;
-
-            return await consulta.FirstOrDefaultAsync();
+            var users = await GetAllAsync();
+            return users.FirstOrDefault(x => x.EMAIL.Equals(email, StringComparison.OrdinalIgnoreCase));
         }
 
-        public async Task AddAsync(Usuario usuario)
+        public Task AddAsync(Usuario usuario)
         {
-            var consulta = from datos in this._context.Usuarios select datos.IDUSUARIO;
-
-            if (await consulta.AnyAsync())
+            return PostAsync("/apiRandomPay/Users/Register", new
             {
-                usuario.IDUSUARIO = await consulta.MaxAsync() + 1;
-            }
-            else
-            {
-                usuario.IDUSUARIO = 1;
-            }
-
-            await this._context.Usuarios.AddAsync(usuario);
-            await this._context.SaveChangesAsync();
+                nombre = usuario.NOMBRE,
+                email = usuario.EMAIL,
+                password = usuario.PASSWORD
+            });
         }
 
-        public async Task UpdateAsync(Usuario usuario)
+        public Task UpdateAsync(Usuario usuario)
         {
-            this._context.Usuarios.Update(usuario);
-            await this._context.SaveChangesAsync();
+            return PutAsync("/apiRandomPay/Users", usuario);
         }
 
-        public async Task DeleteAsync(int id)
+        public Task DeleteAsync(int id)
         {
-            Usuario usuario = await this.GetByIdAsync(id);
-            if (usuario != null)
-            {
-                this._context.Usuarios.Remove(usuario);
-                await this._context.SaveChangesAsync();
-            }
+            return DeleteAsync($"/apiRandomPay/Users/{id}");
         }
     }
 }

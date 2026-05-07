@@ -10,6 +10,10 @@ using System.Globalization;
 using System.Net;
 using System.Net.Mail;
 using System.Security.Claims;
+using Azure;
+using Azure.Communication.Email;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 namespace RandomPayMCSD.Controllers
 {
@@ -558,7 +562,17 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                var usuarioDeudor = await _repoActividades.GetUsuarioByIdAsync(deudor.IDUSUARIO.Value);
+                Usuario usuarioDeudor = null;
+                try
+                {
+                    usuarioDeudor = await _repoActividades.GetUsuarioByIdAsync(deudor.IDUSUARIO.Value);
+                }
+                catch (HttpRequestException)
+                {
+                    TempData["ERROR_CORREO"] = "No se pudo encontrar la cuenta del deudor en la base de datos (API devolvió 404).";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
+
                 if (usuarioDeudor == null || string.IsNullOrEmpty(usuarioDeudor.EMAIL))
                 {
                     TempData["ERROR_CORREO"] = "No se pudo obtener el email del deudor.";
@@ -578,41 +592,69 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                var usuarioAcreedor = await _repoActividades.GetUsuarioByIdAsync(acreedor.IDUSUARIO.Value);
+                Usuario usuarioAcreedor = null;
+                try
+                {
+                    usuarioAcreedor = await _repoActividades.GetUsuarioByIdAsync(acreedor.IDUSUARIO.Value);
+                }
+                catch (HttpRequestException)
+                {
+                    TempData["ERROR_CORREO"] = "No se pudo encontrar la cuenta del acreedor en la base de datos (API devolvió 404).";
+                    return RedirectToAction("Detalle", new { id = idActividad });
+                }
+
                 if (usuarioAcreedor == null || string.IsNullOrEmpty(usuarioAcreedor.EMAIL))
                 {
                     TempData["ERROR_CORREO"] = "No se pudo obtener el email del acreedor.";
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
+                // Buscar la cantidad exacta que debe el deudor al acreedor
+                var transferencias = await _balanceService.GetTransferenciasAsync(idActividad);
+                var deudaEspecifica = transferencias.FirstOrDefault(t => t.IdDeudor == idDeudor && t.IdAcreedor == idAcreedor);
+                string cantidadTexto = deudaEspecifica != null ? deudaEspecifica.Cantidad.ToString("N2") : "una cantidad pendiente";
+
                 string asunto = "Recordatorio de Deuda en Actividad " + actividad.NOMBREACTIVIDAD;
-                string cuerpo = $"<p>Hola,</p><p>Este es un recordatorio de que tienes una deuda pendiente con el acreedor en la actividad <strong>{actividad.NOMBREACTIVIDAD}</strong>.</p><p>El acreedor es: {acreedor.NOMBREPARTICIPANTE}.</p><p>Por favor, realiza el pago correspondiente.</p><p>Gracias.</p>";
+                string cuerpo = $@"
+                    <div style='font-family: Arial, sans-serif; color: #333;'>
+                        <h2 style='color: #2563eb;'>¡Hola {deudor.NOMBREPARTICIPANTE}!</h2>
+                        <p><strong>{acreedor.NOMBREPARTICIPANTE}</strong> te ha enviado un recordatorio desde RandomPay.</p>
+                        <p>Tienes una deuda pendiente de <strong>{cantidadTexto} {actividad.MONEDAPRINCIPAL}</strong> en la actividad <strong>{actividad.NOMBREACTIVIDAD}</strong>.</p>
+                        <p>Si aún no te has unido o necesitas registrar el pago, utiliza el código de invitación: <strong>{actividad.INVITACIONCOD}</strong></p>
+                        <p>Por favor, realiza el pago correspondiente y avisa a {acreedor.NOMBREPARTICIPANTE} para que salde la deuda en la app.</p>
+                        <br/>
+                        <p style='font-size: 0.9em; color: #666;'>Gracias por usar RandomPay 💸</p>
+                    </div>";
 
-                string miCorreo = _config["EmailSettings:Correo"];
-                string miPassword = _config["EmailSettings:Password"];
+                string senderAddress = _config["EmailSettings:Correo"] ?? string.Empty;
+                string connectionString = _config["EmailSettings:Password"] ?? string.Empty;
 
-                using (var smtpClient = new SmtpClient("smtp.gmail.com", 587))
+                if (string.IsNullOrEmpty(senderAddress) || string.IsNullOrEmpty(connectionString))
                 {
-                    smtpClient.EnableSsl = true;
-                    smtpClient.Credentials = new NetworkCredential(miCorreo, miPassword);
-
-                    var mailMessage = new MailMessage
-                    {
-                        From = new MailAddress(miCorreo),
-                        Subject = asunto,
-                        Body = cuerpo,
-                        IsBodyHtml = true,
-                    };
-                    mailMessage.To.Add(usuarioDeudor.EMAIL);
-                    smtpClient.Send(mailMessage);
+                    throw new Exception("No se encontraron las credenciales de correo o contraseña en la configuración. Revisa Azure Key Vault.");
                 }
+
+                var emailClient = new Azure.Communication.Email.EmailClient(connectionString);
+
+                var emailContent = new Azure.Communication.Email.EmailContent(asunto)
+                {
+                    Html = cuerpo
+                };
+
+                var emailMessage = new Azure.Communication.Email.EmailMessage(
+                    senderAddress: senderAddress,
+                    recipientAddress: usuarioDeudor.EMAIL,
+                    content: emailContent);
+
+                await emailClient.SendAsync(Azure.WaitUntil.Started, emailMessage);
 
                 TempData["EXITO_CORREO"] = "Recordatorio de deuda enviado correctamente.";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al enviar recordatorio de deuda");
-                TempData["ERROR_CORREO"] = "Ocurrió un error al enviar el recordatorio de deuda.";
+                // Modificamos ligeramente el mensaje de error para que, si falla de nuevo, te muestre la razón exacta en pantalla
+                TempData["ERROR_CORREO"] = "Error al enviar: " + ex.Message;
             }
 
             return RedirectToAction("Detalle", new { id = idActividad });
@@ -623,14 +665,11 @@ namespace RandomPayMCSD.Controllers
             result = 0;
             if (string.IsNullOrWhiteSpace(rawValue)) return false;
 
-            // Intenta parsear directamente como decimal
             if (decimal.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out result))
                 return true;
 
-            // Reemplaza , por . para el parseo
             rawValue = rawValue.Replace(',', '.');
 
-            // Intenta parsear nuevamente
             return decimal.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out result);
         }
     }

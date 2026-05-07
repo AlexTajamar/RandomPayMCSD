@@ -75,7 +75,7 @@ namespace RandomPayMCSD.Repositories
 
         public Task<Usuario?> GetUsuarioByIdAsync(int usuarioId)
         {
-            return GetAsync<Usuario>($"/apiRandomPay/Users/{usuarioId}");
+            return GetAsync<Usuario>($"/apiRandomPay/Actividades/Usuario/{usuarioId}");
         }
     }
 }

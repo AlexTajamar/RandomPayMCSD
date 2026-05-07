@@ -3,8 +3,36 @@ using RandomPayMCSD.Interfaces;
 using RandomPayMCSD.Repositories;
 using RandomPayMCSD.Repositories.Interfaces;
 using RandomPayMCSD.Services;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuración de Azure Key Vault
+string keyVaultUrl = builder.Configuration["KeyVaultUrl"] ?? "https://randompay.vault.azure.net/";
+var secretClient = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+
+string correoSecret = "";
+string passSecret = "";
+
+try 
+{
+    KeyVaultSecret secretEmail = await secretClient.GetSecretAsync("email");
+    KeyVaultSecret secretPass = await secretClient.GetSecretAsync("pass");
+
+    correoSecret = secretEmail.Value;
+    passSecret = secretPass.Value;
+} 
+catch (Exception ex) 
+{
+    Console.WriteLine($"No se pudieron cargar los secretos del Key Vault: {ex.Message}");
+}
+
+// Sobrescribimos en configuración temporalmente sólo para que IConfiguration inyectado 
+// siga teniendo acceso a "EmailSettings:Correo" desde donde ActividadesController lo lee.
+// (Si no modificas la config ni cambias el controlador, ActividadesController no podrá leerlas)
+builder.Configuration["EmailSettings:Correo"] = correoSecret;
+builder.Configuration["EmailSettings:Password"] = passSecret;
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddDistributedMemoryCache();

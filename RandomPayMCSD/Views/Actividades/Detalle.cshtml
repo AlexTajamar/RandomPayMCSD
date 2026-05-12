@@ -30,14 +30,20 @@
     var maxBalance = balances?.OrderByDescending(b => b.Debe).FirstOrDefault();
     bool soyElMaximoGastador = maxBalance != null && maxBalance.Participante == miParticipanteLogueado?.NOMBREPARTICIPANTE && maxBalance.Debe > 0.01;
 }
+
 <style>
+    body {
+        background-color: #f8fafc;
+    }
+
     .clean-card {
         background: white;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
-        padding: 2rem;
+        border-radius: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        padding: 1.5rem;
         border: 1px solid #f1f5f9;
-        height: 100%;
+        height: auto;
+        transition: transform 0.2s ease;
     }
 
     .list-item-modern {
@@ -52,54 +58,101 @@
         transition: all 0.2s ease;
     }
 
-        .list-item-modern:hover {
+        .list-item-modern:active, .list-item-modern:hover {
             border-color: #cbd5e1;
-            transform: translateY(-2px);
+            background-color: #f8fafc;
         }
 
     .balance-positive {
-        color: #10b981;
+        color: #059669;
         font-weight: 700;
         background: #d1fae5;
         padding: 6px 12px;
-        border-radius: 10px;
+        border-radius: 12px;
     }
 
     .balance-negative {
-        color: #ef4444;
+        color: #dc2626;
         font-weight: 700;
         background: #fee2e2;
         padding: 6px 12px;
-        border-radius: 10px;
+        border-radius: 12px;
     }
 
     .btn-primary-custom {
         background: #2563eb;
         color: white;
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 0.8rem 1.5rem;
         font-weight: 600;
         border: none;
+        transition: background 0.2s;
+    }
+
+        .btn-primary-custom:hover, .btn-primary-custom:active {
+            background: #1d4ed8;
+            color: white;
+        }
+
+    .btn-light-custom {
+        background: #ffffff;
+        color: #334155;
+        border-radius: 14px;
+        padding: 0.8rem 1.5rem;
+        font-weight: 600;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
 
     .btn-action-circle {
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: white;
+        background: #f8fafc;
         border: 1px solid #e2e8f0;
+        color: #64748b;
+        transition: all 0.2s ease;
+    }
+
+    @@media (max-width: 768px) {
+        .clean-card {
+            padding: 1.25rem;
+            border-radius: 20px;
+        }
+
+        .header-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+            .header-actions > a {
+                flex: 1 1 auto;
+                text-align: center;
+                font-size: 0.9rem;
+                padding: 0.7rem 0.5rem;
+            }
+
+        .title-section {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1.2rem;
+        }
+
+        .custom-input {
+            font-size: 16px;
+        }
     }
 </style>
 
-<div class="bg-dashboard pt-4">
+<div class="pt-3 pb-5">
     <div class="container max-w-6xl">
 
         @if (TempData["EXITO_CORREO"] != null)
         {
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm" role="alert">
                 <i class="fa-solid fa-check-circle me-2"></i>@TempData["EXITO_CORREO"]
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
@@ -107,89 +160,101 @@
 
         @if (TempData["ERROR_CORREO"] != null)
         {
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm" role="alert">
                 <i class="fa-solid fa-exclamation-circle me-2"></i>@TempData["ERROR_CORREO"]
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
         }
 
-        <div class="d-flex justify-content-between align-items-center mb-5">
-            <div class="d-flex align-items-center">
+        <div class="d-flex justify-content-between align-items-center mb-4 title-section">
+            <div class="d-flex align-items-center w-100">
                 @if (!string.IsNullOrEmpty(Model.IMAGEN) && Model.IMAGEN.StartsWith("/"))
                 {
-                    <img src="@Model.IMAGEN" class="rounded-circle me-3 shadow-sm" style="width: 55px; height: 55px; object-fit: cover; border: 2px solid #e2e8f0;">
+                    <img src="@Model.IMAGEN" class="rounded-circle me-3 shadow-sm" style="width: 60px; height: 60px; object-fit: cover; border: 3px solid white;">
                 }
                 else
                 {
-                    <div class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle me-3 fs-2 fw-bold" style="width: 55px; height: 55px;">
+                    <div class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle me-3 fs-1 shadow-sm" style="width: 60px; height: 60px; border: 3px solid white;">
                         @(string.IsNullOrEmpty(Model.IMAGEN) ? "✈️" : Model.IMAGEN)
                     </div>
                 }
-                <div>
-                    <div class="d-flex align-items-center gap-3">
-                        <h1 class="fw-bold mb-0 text-dark">@Model.NOMBREACTIVIDAD</h1>
-
-                        <form id="form-delete-actividad" asp-action="DeleteActividad" method="post">
+                <div class="flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <h1 class="fw-bold mb-0 text-dark fs-3">@Model.NOMBREACTIVIDAD</h1>
+                        <form id="form-delete-actividad" asp-action="DeleteActividad" method="post" class="m-0">
                             <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
-                            <button type="button" class="btn btn-link text-danger p-0 border-0" onclick="confirmarAccion('actividad')">
+                            <button type="button" class="btn btn-link text-danger p-0 border-0 ms-1" onclick="confirmarAccion('actividad')">
                                 <i class="fa-solid fa-trash-can fs-5"></i>
                             </button>
                         </form>
+                    </div>
 
-                        <div class="bg-warning bg-opacity-10 border border-warning border-opacity-25 px-3 py-1 rounded-pill d-flex align-items-center gap-2">
-                            <span class="text-warning-emphasis small fw-bold">CÓDIGO: @Model.INVITACIONCOD</span>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                        <div class="bg-warning bg-opacity-10 border border-warning border-opacity-25 px-3 py-1 rounded-pill d-inline-flex align-items-center gap-2">
+                            <span class="text-warning-emphasis small fw-bold">CÓD: @Model.INVITACIONCOD</span>
                             <a href="@urlWhatsapp" target="_blank" rel="noopener noreferrer" class="text-success text-decoration-none" title="Compartir por WhatsApp">
-                                <i class="fa-brands fa-whatsapp"></i>
+                                <i class="fa-brands fa-whatsapp fs-5"></i>
                             </a>
                         </div>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-2 fw-semibold">
+                            <i class="fa-solid fa-coins me-1"></i> @Model.MONEDAPRINCIPAL
+                        </span>
                     </div>
-                    <span class="text-muted small fw-semibold"><i class="fa-solid fa-coins me-1"></i> Moneda Base: @Model.MONEDAPRINCIPAL</span>
                 </div>
             </div>
-            <div class="d-flex gap-2">
-                <a asp-action="AddParticipante" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light text-primary border fw-bold text-decoration-none" style="border-radius: 12px; padding: 0.8rem 1.5rem;"><i class="fa-solid fa-user-plus me-2"></i>Amigos</a>
-                <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-primary-custom text-decoration-none">Añadir gasto</a>
-                <a asp-controller="Estadisticas" asp-action="Index" asp-route-idActividad="@Model.IDACTIVIDAD" class="btn btn-light text-dark border fw-bold text-decoration-none shadow-sm" style="border-radius: 12px; padding: 0.8rem 1.5rem;"><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Estadísticas</a>
+
+            <div class="d-flex gap-2 header-actions">
+                <a asp-action="AddParticipante" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-light-custom text-dark text-decoration-none d-flex align-items-center justify-content-center">
+                    <i class="fa-solid fa-user-plus text-primary me-2"></i> Amigos
+                </a>
+                <a asp-action="AddGasto" asp-route-id="@Model.IDACTIVIDAD" class="btn btn-primary-custom text-decoration-none shadow-sm d-flex align-items-center justify-content-center">
+                    Añadir gasto
+                </a>
+                <a asp-controller="Estadisticas" asp-action="Index" asp-route-idActividad="@Model.IDACTIVIDAD" class="btn btn-light-custom text-dark text-decoration-none d-flex align-items-center justify-content-center">
+                    <i class="fa-solid fa-chart-pie text-primary me-2"></i> Estadísticas
+                </a>
             </div>
         </div>
 
         <div class="row g-4">
             <div class="col-lg-7">
+
                 <div class="row g-3 mb-4">
                     <div class="col-6">
-                        <div class="clean-card p-3 text-center border-0 shadow-sm" style="background: #334155; color: white;">
-                            <span class="small opacity-75 d-block mb-1 text-uppercase fw-bold">Gasto Total Grupo</span>
-                            <h4 class="fw-bold mb-0">@totalActividad.ToString("N2") <small class="fs-6">@Model.MONEDAPRINCIPAL</small></h4>
+                        <div class="clean-card p-3 p-md-4 text-center border-0" style="background: #334155; color: white;">
+                            <span class="small opacity-75 d-block mb-1 text-uppercase fw-bold" style="letter-spacing: 0.5px;">Gasto Total</span>
+                            <h3 class="fw-bold mb-0">@totalActividad.ToString("N2") <small class="fs-6 fw-normal">@Model.MONEDAPRINCIPAL</small></h3>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="clean-card p-3 text-center border-0 shadow-sm" style="background: @(soyElMaximoGastador ? "#10b981" : "#3b82f6"); color: white;">
-                            <span class="small opacity-75 d-block mb-1 text-uppercase fw-bold">Tu Gasto Real</span>
-                            <h4 class="fw-bold mb-0">@miGastoReal.ToString("N2") <small class="fs-6">@Model.MONEDAPRINCIPAL</small></h4>
+                        <div class="clean-card p-3 p-md-4 text-center border-0 position-relative overflow-hidden" style="background: @(soyElMaximoGastador ? "#10b981" : "#2563eb"); color: white;">
+                            <span class="small opacity-75 d-block mb-1 text-uppercase fw-bold" style="letter-spacing: 0.5px;">Tu Gasto Real</span>
+                            <h3 class="fw-bold mb-0">@miGastoReal.ToString("N2") <small class="fs-6 fw-normal">@Model.MONEDAPRINCIPAL</small></h3>
                             @if (soyElMaximoGastador)
                             {
-                                <span class="badge bg-white text-success p-1 mt-1 fw-bold" style="font-size:0.55rem">🥇 BANQUERO</span>
+                                <div class="position-absolute top-0 end-0 mt-2 me-2">
+                                    <span class="badge bg-white text-success rounded-pill fw-bold shadow-sm" style="font-size:0.6rem">🥇 BANQUERO</span>
+                                </div>
                             }
                         </div>
                     </div>
                 </div>
 
-                <div class="clean-card mb-4" style="border-top: 4px solid #10b981; height: auto;">
+                <div class="clean-card mb-4" style="border-top: 5px solid #10b981;">
                     <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-cart-shopping me-2 text-success"></i> Lista de la compra</h5>
 
                     <form asp-action="AddItemCompra" method="post" class="mb-4">
                         <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
-                        <div class="input-group">
-                            <input type="text" name="nombreItem" class="form-control custom-input" placeholder="Ej: Entradas, Barbacoa..." style="border-radius: 12px 0 0 12px;" required autocomplete="off">
-                            <input type="number" step="0.01" min="0" name="precioEstimadoStr" class="form-control custom-input" placeholder="Est. @Model.MONEDAPRINCIPAL" style="max-width: 130px; border-radius: 0;" required autocomplete="off">
-                            <button type="submit" class="btn btn-success px-3 fw-bold" style="border-radius: 0 12px 12px 0;">
-                                <i class="fa-solid fa-plus"></i> Añadir
+                        <div class="input-group shadow-sm" style="border-radius: 14px;">
+                            <input type="text" name="nombreItem" class="form-control custom-input border-end-0 py-3" placeholder="Ej: Entradas, Cena..." style="border-radius: 14px 0 0 14px;" required autocomplete="off">
+                            <input type="number" step="0.01" min="0" name="precioEstimadoStr" class="form-control custom-input border-start-0 py-3" placeholder="Est. @Model.MONEDAPRINCIPAL" style="max-width: 110px;" required autocomplete="off">
+                            <button type="submit" class="btn btn-success px-3 fw-bold" style="border-radius: 0 14px 14px 0;">
+                                <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
                     </form>
 
                     @{
-
                         var listaCompra = ViewBag.ListaCompra as List<RandomPayMCSD.Models.ItemCompra>;
                         var listaPendiente = listaCompra?.Where(x => !x.Comprado).ToList() ?? new List<RandomPayMCSD.Models.ItemCompra>();
                     }
@@ -199,24 +264,24 @@
                         <div class="d-flex flex-column gap-2">
                             @foreach (var item in listaPendiente)
                             {
-                                <div class="list-item-modern p-3" style="margin-bottom: 0;">
+                                <div class="list-item-modern p-3 mb-0">
                                     <div class="d-flex align-items-center">
                                         <i class="fa-regular fa-circle text-muted fs-4 me-3"></i>
                                         <div>
                                             <h6 class="mb-0 fw-bold text-dark">@item.NombreItem</h6>
-                                            <small class="text-muted fw-bold">Est: @item.PrecioEstimado.ToString("N2") @Model.MONEDAPRINCIPAL</small>
+                                            <small class="text-primary fw-bold">~ @item.PrecioEstimado.ToString("N2") @Model.MONEDAPRINCIPAL</small>
                                         </div>
                                     </div>
 
                                     <div class="d-flex gap-2">
-                                        <a href="@Url.Action("AddGasto", "Actividades", new { id = Model.IDACTIVIDAD, idItemCompra = item.IdItem })" class="btn btn-sm btn-primary-custom text-decoration-none" style="padding: 0.4rem 1rem;">
-                                            Finalizar
+                                        <a href="@Url.Action("AddGasto", "Actividades", new { id = Model.IDACTIVIDAD, idItemCompra = item.IdItem })" class="btn btn-sm btn-primary-custom text-decoration-none py-1 px-3 d-flex align-items-center">
+                                            Pagar
                                         </a>
-                                        <form asp-action="DeleteItemCompra" method="post">
+                                        <form asp-action="DeleteItemCompra" method="post" class="m-0">
                                             <input type="hidden" name="idItem" value="@item.IdItem" />
                                             <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
-                                            <button type="submit" class="btn btn-sm btn-light border text-danger" title="Borrar de la lista">
-                                                <i class="fa-solid fa-trash"></i>
+                                            <button type="submit" class="btn-action-circle text-danger bg-transparent" title="Borrar de la lista">
+                                                <i class="fa-solid fa-trash-can"></i>
                                             </button>
                                         </form>
                                     </div>
@@ -226,58 +291,77 @@
                     }
                     else
                     {
-                        <div class="text-center p-3 text-muted small">La lista está vacía. Añade lo que necesitéis comprar.</div>
+                        <div class="text-center p-4 bg-light rounded-4 text-muted small border">
+                            <i class="fa-solid fa-basket-shopping fs-3 mb-2 opacity-50"></i><br />
+                            La lista está vacía. Añade lo que necesitéis comprar.
+                        </div>
                     }
                 </div>
 
-                <div class="clean-card" style="height: auto;">
-                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-receipt me-2 text-muted"></i> Historial de Gastos</h5>
+                <div class="clean-card mb-4 mb-lg-0">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-receipt me-2 text-primary"></i> Historial de Gastos</h5>
                     @if (Model.Gastos != null && Model.Gastos.Any())
                     {
-                        @foreach (var gasto in Model.Gastos.OrderByDescending(g => g.FECHA))
-                        {
-                            <div class="list-item-modern">
-                                <div>
-                                    <span class="fw-bold text-dark fs-6">@gasto.CONCEPTO</span>
-                                    <div class="mt-1 small text-muted">@gasto.FECHA.ToString("dd MMM") | Pagado por: @gasto.Pagador?.NOMBREPARTICIPANTE</div>
-                                </div>
-                                <div class="d-flex align-items-center gap-3">
-                                    <span class="fw-bold fs-5">@gasto.IMPORTE.ToString("N2")</span>
-                                    <div class="d-flex gap-1 border-start ps-3">
-                                        <a asp-action="EditGasto" asp-route-idGasto="@gasto.IDGASTO" class="btn-action-circle text-primary text-decoration-none"><i class="fa-solid fa-pen"></i></a>
-
-                                        <form id="form-delete-gasto-@gasto.IDGASTO" asp-action="DeleteGasto" method="post">
-                                            <input type="hidden" name="idGasto" value="@gasto.IDGASTO" />
-                                            <button type="button" class="btn-action-circle text-danger border-0 bg-transparent" onclick="confirmarAccion('gasto', '@gasto.IDGASTO')">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </form>
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var gasto in Model.Gastos.OrderByDescending(g => g.FECHA))
+                            {
+                                <div class="list-item-modern shadow-sm border-0 mb-0">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                            <i class="fa-solid fa-money-bill-wave"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-1">@gasto.CONCEPTO</h6>
+                                            <div class="small text-muted">@gasto.FECHA.ToString("dd MMM") • Pagado por <span class="fw-semibold text-dark">@gasto.Pagador?.NOMBREPARTICIPANTE</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-column align-items-end">
+                                        <span class="fw-bold fs-5 text-dark mb-1">@gasto.IMPORTE.ToString("N2")</span>
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="EditGasto" asp-route-idGasto="@gasto.IDGASTO" class="text-primary text-decoration-none small"><i class="fa-solid fa-pen"></i> Editar</a>
+                                            <form id="form-delete-gasto-@gasto.IDGASTO" asp-action="DeleteGasto" method="post" class="m-0">
+                                                <input type="hidden" name="idGasto" value="@gasto.IDGASTO" />
+                                                <button type="button" class="text-danger border-0 bg-transparent small p-0 ms-2" onclick="confirmarAccion('gasto', '@gasto.IDGASTO')">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        }
+                            }
+                        </div>
                     }
                     else
                     {
-                        <div class="text-center p-3 text-muted small">Aún no hay gastos registrados.</div>
+                        <div class="text-center p-4 bg-light rounded-4 text-muted small border">
+                            Aún no hay gastos registrados.
+                        </div>
                     }
                 </div>
             </div>
 
             <div class="col-lg-5 d-flex flex-column gap-4">
-                <div class="clean-card" style="height: auto;">
-                    <h5 class="fw-bold text-dark mb-4">Balances</h5>
+
+                <div class="clean-card">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-scale-balanced me-2 text-muted"></i> Balances</h5>
                     @if (balances != null)
                     {
-                        @foreach (var b in balances)
-                        {
-                            <div class="list-item-modern px-3 py-2 mb-2 shadow-none border-0 bg-light">
-                                <span class="fw-bold text-dark">@b.Participante</span>
-                                <span class="@(b.Debe > 0.01 ? "balance-positive" : (b.Debe < -0.01 ? "balance-negative" : ""))">
-                                    @(b.Debe > 0 ? "+" : "")@b.Debe.ToString("N2")
-                                </span>
-                            </div>
-                        }
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var b in balances)
+                            {
+                                <div class="list-item-modern px-3 py-2 mb-0 shadow-none border-0 bg-light">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: bold;">
+                                            @b.Participante.Substring(0, 1).ToUpper()
+                                        </div>
+                                        <span class="fw-bold text-dark">@b.Participante</span>
+                                    </div>
+                                    <span class="@(b.Debe > 0.01 ? "balance-positive" : (b.Debe < -0.01 ? "balance-negative" : "text-muted fw-bold"))">
+                                        @(b.Debe > 0 ? "+" : "")@b.Debe.ToString("N2")
+                                    </span>
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
 
@@ -288,70 +372,92 @@
                     var meDeben = transferencias.Where(t => t.IdAcreedor == miId).ToList();
                     var otras = transferencias.Where(t => t.IdDeudor != miId && t.IdAcreedor != miId).ToList();
 
-                    <div class="clean-card border-success" style="border-width: 2px; height: auto;">
-                        <h5 class="fw-bold text-dark mb-4">Gestión de Deudas</h5>
+                    <div class="clean-card border-success" style="border-width: 2px;">
+                        <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-handshake me-2 text-success"></i> Gestión de Deudas</h5>
+
                         @if (misDeudas.Any())
                         {
-                            <h6 class="fw-bold text-danger small">DEBES PAGAR:</h6>
+                            <h6 class="fw-bold text-danger small mb-2" style="letter-spacing: 0.5px;">DEBES PAGAR:</h6>
                             @foreach (var t in misDeudas)
                             {
-                                <div class="bg-danger bg-opacity-10 p-3 rounded-4 mb-2 d-flex justify-content-between align-items-center border border-danger border-opacity-25">
-                                    <span class="small">Debes <b>@t.Cantidad.ToString("N2")</b> a @t.NombreAcreedor</span>
-                                    <form id="form-saldar-@t.IdAcreedor" asp-action="SaldarDeuda" method="post">
+                                <div class="bg-danger bg-opacity-10 p-3 rounded-4 mb-2 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center border border-danger border-opacity-25 gap-2">
+                                    <span class="text-dark">Debes <b class="text-danger">@t.Cantidad.ToString("N2")</b> a <b>@t.NombreAcreedor</b></span>
+                                    <form id="form-saldar-@t.IdAcreedor" asp-action="SaldarDeuda" method="post" class="m-0 text-end">
                                         <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
                                         <input type="hidden" name="idDeudor" value="@t.IdDeudor" />
                                         <input type="hidden" name="idAcreedor" value="@t.IdAcreedor" />
                                         <input type="hidden" name="cantidadString" value="@t.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
-                                        <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="confirmarAccion('saldar', '@t.IdAcreedor')">Pagar</button>
+                                        <button type="button" class="btn btn-danger btn-sm fw-bold px-3 rounded-pill shadow-sm" onclick="confirmarAccion('saldar', '@t.IdAcreedor')">Pagar</button>
                                     </form>
                                 </div>
                             }
                         }
+
                         @if (meDeben.Any())
                         {
-                            <h6 class="fw-bold text-primary small mt-3">TE DEBEN INGRESAR:</h6>
+                            <h6 class="fw-bold text-primary small mt-4 mb-2" style="letter-spacing: 0.5px;">TE DEBEN INGRESAR:</h6>
                             @foreach (var t in meDeben)
                             {
-                                <div class="bg-primary bg-opacity-10 p-3 rounded-4 mb-1 small text-dark border border-primary border-opacity-25 d-flex justify-content-between align-items-center">
-                                <span><b>@t.NombreDeudor</b> te debe @t.Cantidad.ToString("N2")</span>
-                                <form asp-action="SendDebtReminderEmail" method="post" style="margin: 0;">
-                                    <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
-                                    <input type="hidden" name="idDeudor" value="@t.IdDeudor" />
-                                    <input type="hidden" name="idAcreedor" value="@t.IdAcreedor" />
-                                    <button type="submit" class="btn btn-sm btn-link text-primary p-0 border-0" title="Enviar recordatorio de deuda">
-                                        <i class="fa-solid fa-envelope"></i>
-                                    </button>
-                                </form>
-                            </div>
+                                string urlApp = $"https://randompay-cef4d0hudeh5cnay.germanywestcentral-01.azurewebsites.net/Actividades/Detalle/{Model.IDACTIVIDAD}";
+                                string textoWa = $"¡Hola {t.NombreDeudor}! Te recuerdo que tienes una deuda pendiente de {t.Cantidad.ToString("N2")} {Model.MONEDAPRINCIPAL} conmigo en la actividad '{Model.NOMBREACTIVIDAD}'. Puedes revisarlo y saldarlo aquí: {urlApp}";
+                                string linkWa = $"https://wa.me/?text={Uri.EscapeDataString(textoWa)}";
+
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-4 mb-2 border border-primary border-opacity-25 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                                    <span class="text-dark"><b>@t.NombreDeudor</b> te debe <b class="text-primary">@t.Cantidad.ToString("N2")</b></span>
+
+                                    <div class="d-flex align-items-center justify-content-end gap-3 bg-white px-3 py-1 rounded-pill shadow-sm border">
+                                        <a href="@linkWa" target="_blank" rel="noopener noreferrer" class="text-success text-decoration-none d-flex align-items-center gap-1" title="Avisar por WhatsApp">
+                                            <i class="fa-brands fa-whatsapp fs-5"></i>
+                                        </a>
+                                        <div class="vr opacity-25"></div>
+                                        <form asp-action="SendDebtReminderEmail" method="post" style="margin: 0;">
+                                            <input type="hidden" name="idActividad" value="@Model.IDACTIVIDAD" />
+                                            <input type="hidden" name="idDeudor" value="@t.IdDeudor" />
+                                            <input type="hidden" name="idAcreedor" value="@t.IdAcreedor" />
+                                            <button type="submit" class="btn btn-link text-primary p-0 border-0 d-flex align-items-center" title="Enviar Email Oficial">
+                                                <i class="fa-solid fa-envelope fs-5"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             }
                         }
+
                         @if (otras.Any())
                         {
-                            <hr />
-                            <h6 class="fw-bold text-muted small">OTROS MOVIMIENTOS:</h6>
-                            @foreach (var t in otras)
-                            {
-                                <div class="small text-muted py-1 border-bottom">@t.NombreDeudor debe @t.Cantidad.ToString("N2") a @t.NombreAcreedor</div>
-                            }
+                            <hr class="my-4 opacity-25" />
+                            <h6 class="fw-bold text-muted small mb-2" style="letter-spacing: 0.5px;">OTROS MOVIMIENTOS:</h6>
+                            <div class="d-flex flex-column gap-2">
+                                @foreach (var t in otras)
+                                {
+                                    <div class="small text-muted py-2 px-3 bg-light rounded-3 border"><b>@t.NombreDeudor</b> debe @t.Cantidad.ToString("N2") a <b>@t.NombreAcreedor</b></div>
+                                }
+                            </div>
+                        }
+
+                        @if (!misDeudas.Any() && !meDeben.Any() && !otras.Any())
+                        {
+                            <div class="text-center p-3 text-muted small mt-2">No hay deudas pendientes, ¡todo el mundo está al día! 🍻</div>
                         }
                     </div>
                 }
 
-                <div class="clean-card" style="height: auto;">
-                    <h5 class="fw-bold text-dark mb-4">Participantes</h5>
+                <div class="clean-card">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fa-solid fa-users me-2 text-muted"></i> Participantes</h5>
                     <div class="d-flex flex-wrap gap-2">
                         @foreach (var p in Model.Participantes)
                         {
-                            <div class="bg-light border rounded-pill px-3 py-2 d-flex align-items-center">
-                                <span class="fw-semibold @(p.IDUSUARIO == currentUser?.IDUSUARIO ? "text-primary" : "")">@p.NOMBREPARTICIPANTE</span>
+                            <div class="bg-white shadow-sm border rounded-pill px-3 py-2 d-flex align-items-center transition-all">
+                                <span class="fw-semibold @(p.IDUSUARIO == currentUser?.IDUSUARIO ? "text-primary" : "text-dark")">@p.NOMBREPARTICIPANTE</span>
                                 @if (p.IDUSUARIO == currentUser?.IDUSUARIO)
                                 {
-                                    <span class="badge bg-primary ms-2" style="font-size:0.6rem">TÚ</span>
+                                    <span class="badge bg-primary ms-2 rounded-pill" style="font-size:0.6rem">TÚ</span>
                                 }
                             </div>
                         }
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -367,18 +473,21 @@
                 confirmButtonColor: '#2563eb',
                 cancelButtonColor: '#64748b',
                 confirmButtonText: 'Sí, confirmar',
-                cancelButtonText: 'Cancelar'
+                cancelButtonText: 'Cancelar',
+                borderRadius: '16px'
             };
 
             if (tipo === 'gasto') {
-                config.text = "Este gasto se eliminará para siempre.";
+                config.text = "Este gasto se eliminará para siempre y los balances se recalcularán.";
                 config.targetForm = `form-delete-gasto-${id}`;
+                config.confirmButtonColor = '#dc2626';
             } else if (tipo === 'actividad') {
-                config.text = "Se borrará la actividad, gastos y participantes.";
+                config.text = "Se borrará toda la actividad, gastos y participantes sin posibilidad de recuperación.";
                 config.targetForm = "form-delete-actividad";
+                config.confirmButtonColor = '#dc2626';
             } else if (tipo === 'saldar') {
-                config.title = "¿Has pagado ya?";
-                config.text = "Se registrará un reembolso en la lista.";
+                config.title = "💸 ¿Has pagado ya?";
+                config.text = "Se registrará un reembolso automático y la deuda desaparecerá.";
                 config.icon = 'question';
                 config.confirmButtonColor = '#10b981';
                 config.targetForm = `form-saldar-${id}`;

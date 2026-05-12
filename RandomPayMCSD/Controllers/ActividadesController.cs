@@ -609,22 +609,30 @@ namespace RandomPayMCSD.Controllers
                     return RedirectToAction("Detalle", new { id = idActividad });
                 }
 
-                // Buscar la cantidad exacta que debe el deudor al acreedor
                 var transferencias = await _balanceService.GetTransferenciasAsync(idActividad);
                 var deudaEspecifica = transferencias.FirstOrDefault(t => t.IdDeudor == idDeudor && t.IdAcreedor == idAcreedor);
                 string cantidadTexto = deudaEspecifica != null ? deudaEspecifica.Cantidad.ToString("N2") : "una cantidad pendiente";
 
                 string asunto = "Recordatorio de Deuda en Actividad " + actividad.NOMBREACTIVIDAD;
-                string cuerpo = $@"
-                    <div style='font-family: Arial, sans-serif; color: #333;'>
-                        <h2 style='color: #2563eb;'>¡Hola {deudor.NOMBREPARTICIPANTE}!</h2>
-                        <p><strong>{acreedor.NOMBREPARTICIPANTE}</strong> te ha enviado un recordatorio desde RandomPay.</p>
-                        <p>Tienes una deuda pendiente de <strong>{cantidadTexto} {actividad.MONEDAPRINCIPAL}</strong> en la actividad <strong>{actividad.NOMBREACTIVIDAD}</strong>.</p>
-                        <p>Si aún no te has unido o necesitas registrar el pago, utiliza el código de invitación: <strong>{actividad.INVITACIONCOD}</strong></p>
-                        <p>Por favor, realiza el pago correspondiente y avisa a {acreedor.NOMBREPARTICIPANTE} para que salde la deuda en la app.</p>
-                        <br/>
-                        <p style='font-size: 0.9em; color: #666;'>Gracias por usar RandomPay 💸</p>
-                    </div>";
+                string urlApp = "https://randompay-cef4d0hudeh5cnay.germanywestcentral-01.azurewebsites.net";
+
+                string cuerpo = $@"<div style='font-family: Arial, sans-serif; color: #333; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;'>
+                                            <h2 style='color: #2563eb;'>¡Hola {deudor.NOMBREPARTICIPANTE}!</h2>
+                                            <p><strong>{acreedor.NOMBREPARTICIPANTE}</strong> te ha enviado un recordatorio desde RandomPay.</p>
+                                            <p>Tienes una deuda pendiente de <strong>{cantidadTexto} {actividad.MONEDAPRINCIPAL}</strong> en la actividad <strong>{actividad.NOMBREACTIVIDAD}</strong>.</p>
+                                            <p>Si aún no te has unido o necesitas registrar el pago, utiliza el código de invitación: <strong>{actividad.INVITACIONCOD}</strong></p>
+        
+                                            <div style='text-align: center; margin: 30px 0;'>
+                                                <a href='{urlApp}' style='background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;'>
+                                                    Ver mi deuda en RandomPay
+                                                </a>
+                                            </div>
+
+                                            <p>Por favor, realiza el pago correspondiente y avisa a {acreedor.NOMBREPARTICIPANTE} para que salde la deuda en la app.</p>
+                                            <br/>
+                                            <hr style='border: none; border-top: 1px solid #e2e8f0; margin-bottom: 15px;' />
+                                            <p style='font-size: 0.9em; color: #666;'>Gracias por usar RandomPay 💸</p>
+                                        </div>";
 
                 string senderAddress = _config["EmailSettings:Correo"] ?? string.Empty;
                 string connectionString = _config["EmailSettings:Password"] ?? string.Empty;
@@ -653,7 +661,6 @@ namespace RandomPayMCSD.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al enviar recordatorio de deuda");
-                // Modificamos ligeramente el mensaje de error para que, si falla de nuevo, te muestre la razón exacta en pantalla
                 TempData["ERROR_CORREO"] = "Error al enviar: " + ex.Message;
             }
 
